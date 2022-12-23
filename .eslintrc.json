@@ -1,0 +1,25 @@
+{
+  "extends": "next/core-web-vitals",
+  "plugins": ["simple-import-sort", "unused-imports"],
+  "rules": {
+    "simple-import-sort/imports": [
+      "error",
+      {
+        "groups": [
+          // side effect imports
+          ["^\\u0000"],
+          // packages
+          ["^@?\\w"],
+          // else
+          ["^"],
+          // relative imports
+          ["^\\."],
+          // types
+          ["^\\..*\\u0000$"]
+        ]
+      }
+    ],
+    "simple-import-sort/exports": "off",
+    "unused-imports/no-unused-imports-ts": "error"
+  }
+}
