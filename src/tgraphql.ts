@@ -220,3 +220,266 @@ function generateSchemaPart(type: AnyType): { hoisted: Record<string, string>; i
 
 // createResolvers()
 console.log(generateSchemaString(Query))
+
+// Queries
+
+class ScalarQueryType<ResolverType extends AnyType> {
+  resolverType: ResolverType
+  constructor(resolverType: ResolverType) {
+    this.resolverType = resolverType
+  }
+}
+
+type AnyObjectType = ObjectType<Record<string, { type: AnyType; optional: boolean }>>
+type AnyObjectListType = [AnyObjectType] | [AnyObjectType, null]
+
+type AnyScalarType = Exclude<AnyType, AnyObjectType | [...any]>
+type AnyScalarListType = [AnyScalarType] | [AnyScalarType, null]
+
+type AnyObjectQueryType = ObjectQueryType<
+  ObjectType<Record<string, { type: AnyType; optional: boolean }>>,
+  Record<string, AnyQueryType>,
+  Record<string, { key: string; type: AnyScalarType; optional: boolean }>,
+  Record<string, { key: string; type: AnyScalarListType; optional: boolean }>,
+  Record<string, { key: string; type: AnyObjectType; optional: boolean }>,
+  Record<string, { key: string; type: AnyObjectListType; optional: boolean }>
+>
+type AnyNodeQueryType = AnyObjectQueryType | ScalarQueryType<AnyType>
+type AnyQueryType = AnyNodeQueryType | [AnyNodeQueryType] | [AnyNodeQueryType, null]
+
+type FilterScalarResolvers<Schema extends Record<string, { type: AnyType; optional: boolean }>> = {
+  [K in Extract<keyof Schema, string>]: Schema[K]['type'] extends AnyObjectType
+    ? never
+    : Schema[K]['type'] extends [...any]
+    ? never
+    : { key: K; type: Schema[K]['type']; optional: Schema[K]['optional'] }
+}
+
+type ScalarResolvers<ResolverType extends AnyObjectType> = {
+  [key in FilterScalarResolvers<ResolverType['schema']>[keyof FilterScalarResolvers<
+    ResolverType['schema']
+  >]['key']]: FilterScalarResolvers<ResolverType['schema']>[key]
+}
+
+type FilterObjectResolvers<Schema extends Record<string, { type: AnyType; optional: boolean }>> = {
+  [K in Extract<keyof Schema, string>]: Schema[K]['type'] extends AnyObjectType
+    ? { key: K; type: Schema[K]['type']; optional: Schema[K]['optional'] }
+    : never
+}
+
+type ObjectResolvers<ResolverType extends AnyObjectType> = {
+  [key in FilterObjectResolvers<ResolverType['schema']>[keyof FilterObjectResolvers<
+    ResolverType['schema']
+  >]['key']]: FilterObjectResolvers<ResolverType['schema']>[key]
+}
+
+type FilterScalarListResolvers<Schema extends Record<string, { type: AnyType; optional: boolean }>> = {
+  [K in Extract<keyof Schema, string>]: Schema[K]['type'] extends [...any]
+    ? Schema[K]['type'] extends AnyObjectListType
+      ? never
+      : { key: K; type: Schema[K]['type']; optional: Schema[K]['optional'] }
+    : never
+}
+
+type ScalarListResolvers<ResolverType extends AnyObjectType> = {
+  [key in FilterScalarListResolvers<ResolverType['schema']>[keyof FilterScalarListResolvers<
+    ResolverType['schema']
+  >]['key']]: FilterScalarListResolvers<ResolverType['schema']>[key]
+}
+
+type FilterObjectListResolvers<Schema extends Record<string, { type: AnyType; optional: boolean }>> = {
+  [K in Extract<keyof Schema, string>]: Schema[K]['type'] extends AnyObjectListType
+    ? { key: K; type: Schema[K]['type']; optional: Schema[K]['optional'] }
+    : never
+}
+
+type ObjectListResolvers<ResolverType extends AnyObjectType> = {
+  [key in FilterObjectListResolvers<ResolverType['schema']>[keyof FilterObjectListResolvers<
+    ResolverType['schema']
+  >]['key']]: FilterObjectListResolvers<ResolverType['schema']>[key]
+}
+
+type ObjectQueryTypeOf<
+  ResolverType extends AnyObjectType,
+  QuerySchema extends Record<string, AnyQueryType> = Record<never, AnyQueryType>
+> = ObjectQueryType<
+  ResolverType,
+  QuerySchema,
+  ScalarResolvers<ResolverType>,
+  ScalarListResolvers<ResolverType>,
+  ObjectResolvers<ResolverType>,
+  ObjectListResolvers<ResolverType>
+>
+
+class ObjectQueryType<
+  ResolverType extends AnyObjectType,
+  QuerySchema extends Record<string, AnyQueryType>,
+  Fields extends ScalarResolvers<ResolverType>,
+  ListFields extends ScalarListResolvers<ResolverType>,
+  ObjectFields extends ObjectResolvers<ResolverType>,
+  ObjectListFields extends ObjectListResolvers<ResolverType>
+> {
+  resolverType: ResolverType
+  schema: QuerySchema
+
+  constructor(resolverType: ResolverType, schema: QuerySchema) {
+    this.resolverType = resolverType
+    this.schema = schema
+  }
+
+  field<K extends Extract<keyof Fields, string>>(key: K) {
+    const schema = this.resolverType.schema as Fields
+    const fieldDesc = schema[key]
+
+    const nextQueryType: ObjectQueryTypeOf<
+      ResolverType,
+      QuerySchema & {
+        [key in K]: ScalarQueryType<Fields[K]['type']>
+      }
+    > = new ObjectQueryType(this.resolverType, {
+      ...this.schema,
+      [key]: new ScalarQueryType(fieldDesc.type),
+    })
+
+    return nextQueryType
+  }
+
+  listField<K extends Extract<keyof ListFields, string>>(key: K) {
+    const schema = this.resolverType.schema as ListFields
+    const fieldDesc = schema[key]
+
+    const nextQueryType: ObjectQueryTypeOf<
+      ResolverType,
+      QuerySchema & {
+        [key in K]: [ScalarQueryType<ListFields[K]['type']>]
+      }
+    > = new ObjectQueryType(this.resolverType, {
+      ...this.schema,
+      [key]: [new ScalarQueryType(fieldDesc.type)],
+    })
+
+    return nextQueryType
+  }
+
+  objectField<
+    K extends Extract<keyof ObjectFields, string>,
+    SubquerySchema extends Record<string, AnyQueryType>,
+    Subquery extends ObjectQueryTypeOf<ObjectFields[K]['type'], SubquerySchema>
+  >(key: K, makeSubquery: (subquery: ObjectQueryTypeOf<ObjectFields[K]['type']>) => Subquery) {
+    const schema = this.resolverType.schema as ObjectFields
+    const fieldDesc = schema[key]
+
+    const emptySubquery = new ObjectQueryType(fieldDesc.type, {})
+    const subquery = makeSubquery(emptySubquery)
+
+    const nextQueryType: ObjectQueryTypeOf<
+      ResolverType,
+      QuerySchema & {
+        [key in K]: Subquery
+      }
+    > = new ObjectQueryType(this.resolverType, {
+      ...this.schema,
+      [key]: subquery,
+    })
+
+    return nextQueryType
+  }
+
+  objectListField<
+    K extends Extract<keyof ObjectListFields, string>,
+    SubquerySchema extends Record<string, AnyQueryType>,
+    Subquery extends ObjectQueryTypeOf<ObjectListFields[K]['type'][0], SubquerySchema>
+  >(
+    key: K,
+    makeSubquery: (subquery: ObjectQueryTypeOf<ObjectListFields[K]['type'][0], Record<never, AnyQueryType>>) => Subquery
+  ) {
+    const schema = this.resolverType.schema as ObjectListFields
+    const fieldDesc = schema[key]
+
+    const emptySubquery = new ObjectQueryType(fieldDesc.type[0], {})
+    const subquery = makeSubquery(emptySubquery)
+
+    const nextQueryType: ObjectQueryTypeOf<
+      ResolverType,
+      QuerySchema & {
+        [key in K]: [Subquery]
+      }
+    > = new ObjectQueryType(this.resolverType, {
+      ...this.schema,
+      [key]: [subquery],
+    })
+
+    return nextQueryType
+  }
+}
+
+function queryType() {
+  return new ObjectQueryType(Query, {})
+}
+
+type QueryResult<Q extends AnyQueryType> = Q extends [infer T extends AnyObjectQueryType]
+  ? Array<QueryResult<T>>
+  : Q extends ObjectQueryType<infer _r, infer QuerySchema, infer _f, infer _lf, infer _of, infer _olf>
+  ? {
+      [K in keyof QuerySchema]: QueryResult<QuerySchema[K]>
+    }
+  : Q extends [infer T extends ScalarQueryType<AnyType>]
+  ? Array<QueryResult<T>>
+  : Q extends ScalarQueryType<infer T>
+  ? Value<T>
+  : never
+
+function useQuery<Q extends AnyNodeQueryType>(queryType: Q): { data: QueryResult<Q> } {
+  const gql = generateQueryString(queryType)
+  console.log(gql)
+  return { data: {} } as any
+}
+
+function generateQueryString<Q extends AnyQueryType>(queryType: Q): string {
+  return ['query', generateQueryStringPart(queryType)].join(' ')
+}
+
+function generateQueryStringPart<Q extends AnyQueryType>(queryType: Q): string {
+  if (Array.isArray(queryType)) {
+    return generateQueryStringPart(queryType[0])
+  }
+
+  if (queryType instanceof ObjectQueryType) {
+    const fields = Object.entries(queryType.schema).map(([key, subqueryType]) => {
+      return `${key} ${generateQueryStringPart(subqueryType).replace(/^/gm, '  ').trim()}`.trim()
+    })
+
+    return ['{', ...fields.map((key) => `  ${key}`), '}'].join('\n')
+  }
+
+  if (queryType instanceof ScalarQueryType) {
+    return ''
+  }
+
+  throw new Error('Unknown query')
+}
+
+// --- DEMO: ---
+
+const q = new ObjectQueryType(Catchup, {})
+type QFields = keyof ScalarResolvers<typeof q.resolverType>
+type QObjectLists = keyof ObjectListResolvers<typeof q.resolverType>
+
+// new ObjectQueryType(Query, {}).field('x')
+// new ObjectQueryType(Query, {}).objectField('recentCatchups', (catchup) => catchup.field('id'))
+// new ObjectQueryType(Query, {}).listField('recentCatchups')
+new ObjectQueryType(Query, {}).objectListField('recentCatchups', (catchup) => catchup.field('id'))
+
+const ListCatchups = queryType().objectListField('recentCatchups', (catchup) =>
+  catchup
+    .field('id')
+    // .field('name')
+    .objectListField('attendees', (attendee) =>
+      attendee.field('access_level').objectField('user', (user) => user.field('id').field('name'))
+    )
+)
+
+const queryData = useQuery(ListCatchups).data
+// queryData.recentCatchups[0]?.attendees[0]?.user.name
+// queryData.recentCatchups[0]?.name
+// queryData.recentCatchups[0]?.attendees[0]?.access_level
