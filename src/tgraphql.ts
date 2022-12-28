@@ -1,15 +1,18 @@
 type ScalarType = 'ID' | 'String' | 'Int' | 'Float' | 'Bool'
 
-abstract class NamedType {
-  typename: string
-  constructor(typename: string) {
+abstract class NamedType<Name extends string> {
+  typename: Name
+  constructor(typename: Name) {
     this.typename = typename
   }
 }
 
-class ObjectType<S extends Record<string, { type: AnyType; optional: boolean }>> extends NamedType {
+class ObjectType<
+  Name extends string,
+  S extends Record<string, { type: AnyType; optional: boolean }>
+> extends NamedType<Name> {
   schema: S
-  constructor(typename: string, schema: S) {
+  constructor(typename: Name, schema: S) {
     super(typename)
     this.schema = schema
   }
@@ -17,7 +20,7 @@ class ObjectType<S extends Record<string, { type: AnyType; optional: boolean }>>
   field<K extends string, T extends AnyType>(
     key: K,
     type: T
-  ): ObjectType<S & { [k in K]: { type: T; optional: false } }> {
+  ): ObjectType<Name, S & { [k in K]: { type: T; optional: false } }> {
     return new ObjectType(this.typename, {
       ...this.schema,
       [key]: { type, optional: false },
@@ -27,7 +30,7 @@ class ObjectType<S extends Record<string, { type: AnyType; optional: boolean }>>
   listField<K extends string, Ts extends readonly [AnyType] | readonly [AnyType, null]>(
     key: K,
     itemTypes: Ts
-  ): ObjectType<S & { [k in K]: { type: Ts; optional: false } }> {
+  ): ObjectType<Name, S & { [k in K]: { type: Ts; optional: false } }> {
     return new ObjectType(this.typename, {
       ...this.schema,
       [key]: { type: itemTypes, optional: false },
@@ -44,18 +47,18 @@ class EnumValueType<S extends string> {
   }
 }
 
-class EnumType<Vs extends ReadonlyArray<string>> extends NamedType {
+class EnumType<Name extends string, Vs extends ReadonlyArray<string>> extends NamedType<Name> {
   values: Array<EnumValueType<Vs[number]>>
-  constructor(typename: string, values: Vs) {
+  constructor(typename: Name, values: Vs) {
     super(typename)
     this.values = values.map((value) => new EnumValueType(typename, value))
   }
 }
 
-function objectType(typename: string) {
+function objectType<Name extends string>(typename: Name) {
   return new ObjectType(typename, {})
 }
-function enumType<S extends ReadonlyArray<string>>(typename: string, ...values: S) {
+function enumType<Name extends string, S extends ReadonlyArray<string>>(typename: Name, ...values: S) {
   return new EnumType(typename, values)
 }
 
@@ -73,8 +76,8 @@ const Catchup = objectType('Catchup').field('id', 'ID').field('author', User).li
 const Query = objectType('Query').listField('recentCatchups', [Catchup])
 
 type AnyType =
-  | ObjectType<Record<string, { type: AnyType; optional: boolean }>>
-  | EnumType<ReadonlyArray<string>>
+  | ObjectType<string, Record<string, { type: AnyType; optional: boolean }>>
+  | EnumType<string, ReadonlyArray<string>>
   | ScalarType
   | EnumValueType<string>
   | [AnyType]
@@ -88,11 +91,11 @@ type Value<T extends AnyType> = T extends [infer I extends AnyType, null]
   ? Array<Value<I>>
   : T extends [infer I extends AnyType]
   ? Array<Value<I>>
-  : T extends EnumType<infer I>
+  : T extends EnumType<string, infer I>
   ? I[number]
   : T extends EnumValueType<infer I>
   ? I
-  : T extends ObjectType<infer I>
+  : T extends ObjectType<string, infer I>
   ? ObjectValue<I>
   : T extends 'Int'
   ? number
@@ -114,11 +117,11 @@ type Resolver<T extends AnyType> = T extends [infer I extends AnyType, null]
   ? () => Array<Value<I> | null>
   : T extends [infer I extends AnyType]
   ? () => Array<Value<I>>
-  : T extends EnumType<infer I>
+  : T extends EnumType<string, infer I>
   ? () => I[number]
   : T extends EnumValueType<infer I>
   ? () => I
-  : T extends ObjectType<infer I>
+  : T extends ObjectType<string, infer I>
   ? { [key in keyof I]: () => I[key]['optional'] extends true ? Value<I[key]['type']> | null : Value<I[key]['type']> }
   : T extends ScalarType
   ? () => string
@@ -129,7 +132,7 @@ type Resolver<T extends AnyType> = T extends [infer I extends AnyType, null]
 // type ARs = Resolver<typeof Attendee>
 // type CRs = Resolver<typeof Catchup>
 
-type SchemaResolvers<Q extends ObjectType<any>> = { Query: Resolver<Q> }
+type SchemaResolvers<Q extends ObjectType<'Query', any>> = { Query: Resolver<Q> }
 
 // --- DEMO: ---
 
@@ -233,14 +236,14 @@ class ScalarQueryType<ResolverType extends AnyType> {
   }
 }
 
-type AnyObjectType = ObjectType<Record<string, { type: AnyType; optional: boolean }>>
+type AnyObjectType = ObjectType<string, Record<string, { type: AnyType; optional: boolean }>>
 type AnyObjectListType = [AnyObjectType] | [AnyObjectType, null]
 
 type AnyScalarType = Exclude<AnyType, AnyObjectType | [...any]>
 type AnyScalarListType = [AnyScalarType] | [AnyScalarType, null]
 
 type AnyObjectQueryType = ObjectQueryType<
-  ObjectType<Record<string, { type: AnyType; optional: boolean }>>,
+  ObjectType<string, Record<string, { type: AnyType; optional: boolean }>>,
   Record<string, AnyQueryType>,
   Record<string, { key: string; type: AnyScalarType; optional: boolean }>,
   Record<string, { key: string; type: AnyScalarListType; optional: boolean }>,
