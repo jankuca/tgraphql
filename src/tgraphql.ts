@@ -476,7 +476,7 @@ function generateSchemaPart(type: AnyType | AnyInputValueType | AnyParamType): {
     return { hoisted: {}, inline: String(type) }
   }
 
-  return { hoisted: {}, inline: type }
+  assertNever(type)
 }
 
 function generateParamInputString(type: AnyParamInputType): string {
