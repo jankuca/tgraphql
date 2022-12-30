@@ -330,7 +330,45 @@ class ObjectQueryType<
     this.schema = schema
   }
 
-  field<K extends Extract<keyof Fields, string>>(key: K) {
+  field<
+    K extends Extract<keyof ObjectListFields, string>,
+    SubquerySchema extends Record<string, AnyQueryType>,
+    ListSubquery extends ObjectQueryTypeOf<ObjectListFields[K]['type'][0], SubquerySchema>
+  >(
+    key: K,
+    makeSubquery: (subquery: ObjectQueryTypeOf<ObjectListFields[K]['type'][0]>) => ListSubquery
+  ): ObjectQueryTypeOf<ResolverType, QuerySchema & { [key in K]: [ListSubquery] }>
+  field<
+    K extends Extract<keyof ObjectFields, string>,
+    SubquerySchema extends Record<string, AnyQueryType>,
+    ObjectSubquery extends ObjectQueryTypeOf<ObjectFields[K]['type'], SubquerySchema>
+  >(
+    key: K,
+    makeSubquery: (subquery: ObjectQueryTypeOf<ObjectFields[K]['type']>) => ObjectSubquery
+  ): ObjectQueryTypeOf<ResolverType, QuerySchema & { [key in K]: ObjectSubquery }>
+  field<K extends Extract<keyof ListFields, string>>(
+    key: K,
+    makeSubquery?: undefined
+  ): ObjectQueryTypeOf<ResolverType, QuerySchema & { [key in K]: [ScalarQueryType<ListFields[K]['type'][0]>] }>
+  field<K extends Extract<keyof Fields, string>>(
+    key: K,
+    makeSubquery?: undefined
+  ): ObjectQueryTypeOf<ResolverType, QuerySchema & { [key in K]: ScalarQueryType<Fields[K]['type']> }>
+  field(key: Extract<keyof ResolverType['schema'], string>, makeSubquery: any): any {
+    const schema = this.resolverType.schema
+    const fieldDesc = schema[key]
+    if (!fieldDesc) throw new Error(`Field ${key} does not exist`)
+
+    const fieldType = fieldDesc.type
+
+    if (Array.isArray(fieldType)) {
+      return fieldType[0] instanceof ObjectType ? this._objectListField(key, makeSubquery) : this._scalarListField(key)
+    }
+
+    return fieldType instanceof ObjectType ? this._objectField(key, makeSubquery) : this._scalarField(key)
+  }
+
+  _scalarField<K extends Extract<keyof Fields, string>>(key: K) {
     const schema = this.resolverType.schema as Fields
     const fieldDesc = schema[key]
 
@@ -347,7 +385,7 @@ class ObjectQueryType<
     return nextQueryType
   }
 
-  listField<K extends Extract<keyof ListFields, string>>(key: K) {
+  _scalarListField<K extends Extract<keyof ListFields, string>>(key: K) {
     const schema = this.resolverType.schema as ListFields
     const fieldDesc = schema[key]
 
@@ -364,7 +402,7 @@ class ObjectQueryType<
     return nextQueryType
   }
 
-  objectField<
+  _objectField<
     K extends Extract<keyof ObjectFields, string>,
     SubquerySchema extends Record<string, AnyQueryType>,
     Subquery extends ObjectQueryTypeOf<ObjectFields[K]['type'], SubquerySchema>
@@ -388,7 +426,7 @@ class ObjectQueryType<
     return nextQueryType
   }
 
-  objectListField<
+  _objectListField<
     K extends Extract<keyof ObjectListFields, string>,
     SubquerySchema extends Record<string, AnyQueryType>,
     Subquery extends ObjectQueryTypeOf<ObjectListFields[K]['type'][0], SubquerySchema>
@@ -471,14 +509,15 @@ type QObjectLists = keyof ObjectListResolvers<typeof q.resolverType>
 // new ObjectQueryType(Query, {}).field('x')
 // new ObjectQueryType(Query, {}).objectField('recentCatchups', (catchup) => catchup.field('id'))
 // new ObjectQueryType(Query, {}).listField('recentCatchups')
-new ObjectQueryType(Query, {}).objectListField('recentCatchups', (catchup) => catchup.field('id'))
+new ObjectQueryType(Query, {}).field('recentCatchups', (catchup) => catchup.field('id'))
 
-const ListCatchups = queryType().objectListField('recentCatchups', (catchup) =>
+const ListCatchups = queryType().field('recentCatchups', (catchup) =>
   catchup
     .field('id')
     // .field('name')
-    .objectListField('attendees', (attendee) =>
-      attendee.field('access_level').objectField('user', (user) => user.field('id').field('name'))
+    .field('author', (author) => author.field('name'))
+    .field('attendees', (attendee) =>
+      attendee.field('access_level').field('user', (user) => user.field('id').field('name'))
     )
 )
 
