@@ -1,6 +1,7 @@
 import { EnumType } from '../EnumType'
 import { EnumValueType } from '../EnumValueType'
 import { AnyObjectType, ObjectType } from '../outputs/ObjectType'
+import { ParamValues } from '../outputs/ParamObjectType'
 import { UnionType } from '../outputs/UnionType'
 import { AnyType } from './AnyType.type'
 import { ScalarType } from './ScalarType.type'
@@ -17,7 +18,11 @@ type Resolver<T extends AnyType> = T extends [infer I extends AnyType, null]
   : T extends EnumValueType<infer I>
   ? () => I
   : T extends ObjectType<string, infer I>
-  ? { [key in keyof I]: () => I[key]['optional'] extends true ? Value<I[key]['type']> | null : Value<I[key]['type']> }
+  ? {
+      [key in keyof I]: (
+        params: null extends I[key]['params'] ? Record<never, any> : ParamValues<NonNullable<I[key]['params']>>
+      ) => I[key]['optional'] extends true ? Value<I[key]['type']> | null : Value<I[key]['type']>
+    }
   : T extends ScalarType
   ? () => string
   : T
