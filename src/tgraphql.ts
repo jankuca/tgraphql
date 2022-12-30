@@ -37,7 +37,7 @@ class ObjectType<
     })
   }
 
-  listField<K extends string, Ts extends readonly [AnyType] | readonly [AnyType, null]>(
+  listField<K extends string, Ts extends [AnyType] | [AnyType, null]>(
     key: K,
     itemTypes: Ts
   ): ObjectType<Name, S & { [k in K]: { type: Ts; optional: false; params: AnyParamObjectType | null } }> {
@@ -47,7 +47,7 @@ class ObjectType<
     })
   }
 
-  optionalListField<K extends string, Ts extends readonly [AnyType] | readonly [AnyType, null]>(
+  optionalListField<K extends string, Ts extends [AnyType] | [AnyType, null]>(
     key: K,
     itemTypes: Ts
   ): ObjectType<Name, S & { [k in K]: { type: Ts; optional: true; params: AnyParamObjectType | null } }> {
