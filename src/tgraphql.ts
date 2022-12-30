@@ -481,7 +481,7 @@ function generateSchemaPart(type: AnyType | AnyInputValueType | AnyParamType): {
 
 function generateParamInputString(type: AnyParamInputType): string {
   if (type instanceof EnumValueType) {
-    return type.value
+    return generateSchemaPart(type).inline
   }
 
   if (type instanceof VariableInput) {
