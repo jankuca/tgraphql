@@ -9,7 +9,7 @@ abstract class NamedType<Name extends string> {
 
 class ObjectType<
   Name extends string,
-  S extends Record<string, { type: AnyType; optional: boolean }>
+  S extends Record<string, { type: AnyType; optional: boolean; params: AnyParamObjectType | null }>
 > extends NamedType<Name> {
   schema: S
   constructor(typename: Name, schema: S) {
@@ -20,38 +20,81 @@ class ObjectType<
   field<K extends string, T extends AnyType>(
     key: K,
     type: T
-  ): ObjectType<Name, S & { [k in K]: { type: T; optional: false } }> {
+  ): ObjectType<Name, S & { [k in K]: { type: T; optional: false; params: AnyParamObjectType | null } }> {
     return new ObjectType(this.typename, {
       ...this.schema,
-      [key]: { type, optional: false },
+      [key]: { type, optional: false, params: null },
     })
   }
 
   optionalField<K extends string, T extends AnyType>(
     key: K,
     type: T
-  ): ObjectType<Name, S & { [k in K]: { type: T; optional: true } }> {
+  ): ObjectType<Name, S & { [k in K]: { type: T; optional: true; params: AnyParamObjectType | null } }> {
     return new ObjectType(this.typename, {
       ...this.schema,
-      [key]: { type, optional: true },
+      [key]: { type, optional: true, params: null },
     })
   }
 
   listField<K extends string, Ts extends readonly [AnyType] | readonly [AnyType, null]>(
     key: K,
     itemTypes: Ts
-  ): ObjectType<Name, S & { [k in K]: { type: Ts; optional: false } }> {
+  ): ObjectType<Name, S & { [k in K]: { type: Ts; optional: false; params: AnyParamObjectType | null } }> {
     return new ObjectType(this.typename, {
       ...this.schema,
-      [key]: { type: itemTypes, optional: false },
+      [key]: { type: itemTypes, optional: false, params: null },
     })
   }
 
   optionalListField<K extends string, Ts extends readonly [AnyType] | readonly [AnyType, null]>(
     key: K,
     itemTypes: Ts
-  ): ObjectType<Name, S & { [k in K]: { type: Ts; optional: true } }> {
+  ): ObjectType<Name, S & { [k in K]: { type: Ts; optional: true; params: AnyParamObjectType | null } }> {
     return new ObjectType(this.typename, {
+      ...this.schema,
+      [key]: { type: itemTypes, optional: true, params: null },
+    })
+  }
+}
+
+class ParamObjectType<S extends Record<string, { type: AnyParamType; optional: boolean }>> {
+  schema: S
+  constructor(schema: S) {
+    this.schema = schema
+  }
+  field<K extends string, T extends AnyParamType>(
+    key: K,
+    type: T
+  ): ParamObjectType<S & { [k in K]: { type: T; optional: false } }> {
+    return new ParamObjectType({
+      ...this.schema,
+      [key]: { type, optional: false },
+    })
+  }
+  optionalField<K extends string, T extends AnyParamType>(
+    key: K,
+    type: T
+  ): ParamObjectType<S & { [k in K]: { type: T; optional: true } }> {
+    return new ParamObjectType({
+      ...this.schema,
+      [key]: { type, optional: true },
+    })
+  }
+  listField<K extends string, Ts extends [AnyParamType] | [AnyParamType, null]>(
+    key: K,
+    itemTypes: Ts
+  ): ParamObjectType<S & { [k in K]: { type: Ts; optional: false } }> {
+    return new ParamObjectType({
+      ...this.schema,
+      [key]: { type: itemTypes, optional: false },
+    })
+  }
+  optionalListField<K extends string, Ts extends [AnyParamType] | [AnyParamType, null]>(
+    key: K,
+    itemTypes: Ts
+  ): ParamObjectType<S & { [k in K]: { type: Ts; optional: true } }> {
+    return new ParamObjectType({
       ...this.schema,
       [key]: { type: itemTypes, optional: true },
     })
@@ -83,11 +126,9 @@ class UnionType<Name extends string, Ts extends ReadonlyArray<AnyObjectType>> ex
   }
 }
 
-type AnyInputValueType =
-  | ScalarType
-  | EnumType<string, ReadonlyArray<string>>
-  | EnumValueType<string>
-  | ObjectType<AnyInputValueType, string, Record<string, { type: AnyInputValueType; optional: boolean }>>
+type AnyParamObjectType = ParamObjectType<Record<string, { type: AnyParamType; optional: boolean }>>
+
+type AnyInputValueType = ScalarType | EnumValueType<string>
 
 function objectType<Name extends string>(typename: Name) {
   return new ObjectType(typename, {})
@@ -123,7 +164,7 @@ const Catchup = objectType('Catchup')
 const Query = objectType('Query').listField('recentCatchups', [Catchup])
 
 type AnyType =
-  | ObjectType<string, Record<string, { type: AnyType; optional: boolean }>>
+  | ObjectType<string, Record<string, { type: AnyType; optional: boolean; params: AnyParamObjectType | null }>>
   | EnumType<string, ReadonlyArray<string>>
   | UnionType<string, ReadonlyArray<AnyObjectType>>
   | ScalarType
@@ -131,7 +172,7 @@ type AnyType =
   | [AnyType]
   | [AnyType, null]
 
-type ObjectValue<S extends Record<string, { type: AnyType; optional: boolean }>> = {
+type ObjectValue<S extends Record<string, { type: AnyType; optional: boolean; params: AnyParamObjectType | null }>> = {
   [key in keyof S]: S[key]['optional'] extends true ? Value<S[key]['type']> | null : Value<S[key]['type']>
 }
 
@@ -154,6 +195,22 @@ type Value<T extends AnyType> = T extends [infer I extends AnyType, null]
   : T extends ScalarType
   ? string
   : T
+
+type ParamValue<T extends AnyParamType> = T extends [infer I extends AnyParamType, null]
+  ? Array<ParamValue<I>>
+  : T extends [infer I extends AnyParamType]
+  ? Array<ParamValue<I>>
+  : T extends EnumValueType<infer I>
+  ? I
+  : T extends 'Int'
+  ? number
+  : T extends 'Bool'
+  ? boolean
+  : T extends ScalarType
+  ? string
+  : T
+
+type AnyParamType = ScalarType | EnumValueType<string> | [AnyParamType] | [AnyParamType, null]
 
 // Testing:
 // type U = Value<typeof User>
@@ -236,7 +293,25 @@ function generateSchemaString(rootType: AnyType): string {
   return Object.values(hoisted).join('\n\n')
 }
 
-function generateSchemaPart(type: AnyType | AnyInputValueType): { hoisted: Record<string, string>; inline: string } {
+function generateSchemaFieldParamStringPart<P extends AnyParamObjectType>(params: P): string {
+  const paramEntries = Object.entries(params.schema)
+  if (paramEntries.length === 0) {
+    return ''
+  }
+
+  return [
+    '(',
+    paramEntries
+      .map(([key, fieldDesc]) => `${key}: ${generateSchemaPart(fieldDesc.type).inline}${fieldDesc.optional ? '' : '!'}`)
+      .join(', '),
+    ')',
+  ].join('')
+}
+
+function generateSchemaPart(type: AnyType | AnyInputValueType | AnyParamType): {
+  hoisted: Record<string, string>
+  inline: string
+} {
   if (Array.isArray(type)) {
     const { hoisted, inline } = generateSchemaPart(type[0])
     return { hoisted, inline: `[${inline}${type[1] === null ? '' : '!'}]` }
@@ -281,7 +356,11 @@ function generateSchemaPart(type: AnyType | AnyInputValueType): { hoisted: Recor
     Object.entries(type.schema).forEach(([key, fieldDesc]) => {
       const { hoisted: hoistedParts, inline } = generateSchemaPart(fieldDesc.type)
       Object.assign(hoisted, hoistedParts)
-      schemaStringParts.push(`  ${key}: ${inline}${fieldDesc.optional ? '' : '!'}`)
+      schemaStringParts.push(
+        `  ${key}${fieldDesc.params ? generateSchemaFieldParamStringPart(fieldDesc.params) : ''}: ${inline}${
+          fieldDesc.optional ? '' : '!'
+        }`
+      )
     })
     schemaStringParts.push('}')
     hoisted[type.typename] = schemaStringParts.join('\n')
@@ -318,7 +397,10 @@ class UnionQueryType<
 }
 
 type AnyUnionType = UnionType<string, ReadonlyArray<AnyObjectType>>
-type AnyObjectType = ObjectType<string, Record<string, { type: AnyType; optional: boolean }>>
+type AnyObjectType = ObjectType<
+  string,
+  Record<string, { type: AnyType; optional: boolean; params: AnyParamObjectType | null }>
+>
 type AnyObjectListType = [AnyObjectType] | [AnyObjectType, null]
 
 type AnyScalarType = Exclude<AnyType, AnyObjectType | [...any]>
@@ -326,28 +408,30 @@ type AnyScalarListType = [AnyScalarType] | [AnyScalarType, null]
 type AnyUnionListType = [AnyUnionType] | [AnyUnionType, null]
 
 type AnyObjectQueryType = ObjectQueryType<
-  ObjectType<string, Record<string, { type: AnyType; optional: boolean }>>,
+  AnyObjectType,
   Record<string, { type: AnyInputValueType; optional: boolean }>,
-  Record<string, { query: AnyQueryType; params: Record<string, AnyInputValueType> }>,
-  Record<string, { key: string; type: AnyScalarType; optional: boolean }>,
-  Record<string, { key: string; type: AnyScalarListType; optional: boolean }>,
-  Record<string, { key: string; type: AnyObjectType; optional: boolean }>,
-  Record<string, { key: string; type: AnyObjectListType; optional: boolean }>,
-  Record<string, { key: string; type: AnyUnionType; optional: boolean }>,
-  Record<string, { key: string; type: AnyUnionListType; optional: boolean }>
+  Record<string, { query: AnyQueryType; paramInputs: Record<string, AnyInputValueType> }>,
+  Record<string, { key: string; type: AnyScalarType; optional: boolean; params: AnyParamObjectType | null }>,
+  Record<string, { key: string; type: AnyScalarListType; optional: boolean; params: AnyParamObjectType | null }>,
+  Record<string, { key: string; type: AnyObjectType; optional: boolean; params: AnyParamObjectType | null }>,
+  Record<string, { key: string; type: AnyObjectListType; optional: boolean; params: AnyParamObjectType | null }>,
+  Record<string, { key: string; type: AnyUnionType; optional: boolean; params: AnyParamObjectType | null }>,
+  Record<string, { key: string; type: AnyUnionListType; optional: boolean; params: AnyParamObjectType | null }>
 >
 type AnyUnionQueryType = UnionQueryType<AnyUnionType, Record<string, AnyObjectQueryType>>
 type AnyNodeQueryType = AnyObjectQueryType | ScalarQueryType<AnyType> | AnyUnionQueryType
 type AnyQueryType = AnyNodeQueryType | [AnyNodeQueryType] | [AnyNodeQueryType, null]
 
-type FilterScalarResolvers<Schema extends Record<string, { type: AnyType; optional: boolean }>> = {
+type FilterScalarResolvers<
+  Schema extends Record<string, { type: AnyType; optional: boolean; params: AnyParamObjectType | null }>
+> = {
   [K in Extract<keyof Schema, string>]: Schema[K]['type'] extends AnyObjectType
     ? never
     : Schema[K]['type'] extends AnyUnionType
     ? never
     : Schema[K]['type'] extends [...any]
     ? never
-    : { key: K; type: Schema[K]['type']; optional: Schema[K]['optional'] }
+    : { key: K; type: Schema[K]['type']; optional: Schema[K]['optional']; params: Schema[K]['params'] }
 }
 
 type ScalarResolvers<ResolverType extends AnyObjectType> = {
@@ -356,9 +440,11 @@ type ScalarResolvers<ResolverType extends AnyObjectType> = {
   >]['key']]: FilterScalarResolvers<ResolverType['schema']>[key]
 }
 
-type FilterObjectResolvers<Schema extends Record<string, { type: AnyType; optional: boolean }>> = {
+type FilterObjectResolvers<
+  Schema extends Record<string, { type: AnyType; optional: boolean; params: AnyParamObjectType | null }>
+> = {
   [K in Extract<keyof Schema, string>]: Schema[K]['type'] extends AnyObjectType
-    ? { key: K; type: Schema[K]['type']; optional: Schema[K]['optional'] }
+    ? { key: K; type: Schema[K]['type']; optional: Schema[K]['optional']; params: Schema[K]['params'] }
     : never
 }
 
@@ -368,9 +454,11 @@ type ObjectResolvers<ResolverType extends AnyObjectType> = {
   >]['key']]: FilterObjectResolvers<ResolverType['schema']>[key]
 }
 
-type FilterUnionResolvers<Schema extends Record<string, { type: AnyType; optional: boolean }>> = {
+type FilterUnionResolvers<
+  Schema extends Record<string, { type: AnyType; optional: boolean; params: AnyParamObjectType | null }>
+> = {
   [K in Extract<keyof Schema, string>]: Schema[K]['type'] extends AnyUnionType
-    ? { key: K; type: Schema[K]['type']; optional: Schema[K]['optional'] }
+    ? { key: K; type: Schema[K]['type']; optional: Schema[K]['optional']; params: Schema[K]['params'] }
     : never
 }
 
@@ -380,11 +468,13 @@ type UnionResolvers<ResolverType extends AnyObjectType> = {
   >]['key']]: FilterUnionResolvers<ResolverType['schema']>[key]
 }
 
-type FilterScalarListResolvers<Schema extends Record<string, { type: AnyType; optional: boolean }>> = {
+type FilterScalarListResolvers<
+  Schema extends Record<string, { type: AnyType; optional: boolean; params: AnyParamObjectType | null }>
+> = {
   [K in Extract<keyof Schema, string>]: Schema[K]['type'] extends [...any]
     ? Schema[K]['type'] extends AnyObjectListType
       ? never
-      : { key: K; type: Schema[K]['type']; optional: Schema[K]['optional'] }
+      : { key: K; type: Schema[K]['type']; optional: Schema[K]['optional']; params: Schema[K]['params'] }
     : never
 }
 
@@ -394,9 +484,11 @@ type ScalarListResolvers<ResolverType extends AnyObjectType> = {
   >]['key']]: FilterScalarListResolvers<ResolverType['schema']>[key]
 }
 
-type FilterObjectListResolvers<Schema extends Record<string, { type: AnyType; optional: boolean }>> = {
+type FilterObjectListResolvers<
+  Schema extends Record<string, { type: AnyType; optional: boolean; params: AnyParamObjectType | null }>
+> = {
   [K in Extract<keyof Schema, string>]: Schema[K]['type'] extends AnyObjectListType
-    ? { key: K; type: Schema[K]['type']; optional: Schema[K]['optional'] }
+    ? { key: K; type: Schema[K]['type']; optional: Schema[K]['optional']; params: Schema[K]['params'] }
     : never
 }
 
@@ -406,9 +498,11 @@ type ObjectListResolvers<ResolverType extends AnyObjectType> = {
   >]['key']]: FilterObjectListResolvers<ResolverType['schema']>[key]
 }
 
-type FilterUnionListResolvers<Schema extends Record<string, { type: AnyType; optional: boolean }>> = {
+type FilterUnionListResolvers<
+  Schema extends Record<string, { type: AnyType; optional: boolean; params: AnyParamObjectType | null }>
+> = {
   [K in Extract<keyof Schema, string>]: Schema[K]['type'] extends AnyUnionListType
-    ? { key: K; type: Schema[K]['type']; optional: Schema[K]['optional'] }
+    ? { key: K; type: Schema[K]['type']; optional: Schema[K]['optional']; params: Schema[K]['params'] }
     : never
 }
 
@@ -435,14 +529,14 @@ type UnionSubqueryFactories<
   ) => ObjectQueryTypeOf<
     UnionTypeByName<U, T>,
     Variables,
-    Record<string, { query: AnyQueryType; params: Record<string, AnyInputValueType> }>
+    Record<string, { query: AnyQueryType; paramInputs: Record<string, AnyInputValueType> }>
   >
 }
 
 type ObjectQueryTypeOf<
   ResolverType extends AnyObjectType,
   Variables extends Record<string, { type: AnyInputValueType; optional: boolean }>,
-  QuerySchema extends Record<string, { query: AnyQueryType; params: Record<string, AnyInputValueType> }> = Record<
+  QuerySchema extends Record<string, { query: AnyQueryType; paramInputs: Record<string, AnyInputValueType> }> = Record<
     never,
     any
   >
@@ -461,7 +555,7 @@ type ObjectQueryTypeOf<
 class ObjectQueryType<
   ResolverType extends AnyObjectType,
   Variables extends Record<string, { type: AnyInputValueType; optional: boolean }>,
-  QuerySchema extends Record<string, { query: AnyQueryType; params: Record<string, AnyInputValueType> }>,
+  QuerySchema extends Record<string, { query: AnyQueryType; paramInputs: Record<string, AnyInputValueType> }>,
   Fields extends ScalarResolvers<ResolverType>,
   ListFields extends ScalarListResolvers<ResolverType>,
   ObjectFields extends ObjectResolvers<ResolverType>,
@@ -481,7 +575,7 @@ class ObjectQueryType<
 
   field<
     K extends Extract<keyof ObjectListFields, string>,
-    SubquerySchema extends Record<string, { query: AnyQueryType; params: Record<string, AnyInputValueType> }>,
+    SubquerySchema extends Record<string, { query: AnyQueryType; paramInputs: Record<string, AnyInputValueType> }>,
     ListSubquery extends ObjectQueryTypeOf<ObjectListFields[K]['type'][0], Variables, SubquerySchema>
   >(
     key: K,
@@ -489,12 +583,12 @@ class ObjectQueryType<
   ): ObjectQueryTypeOf<
     ResolverType,
     Variables,
-    QuerySchema & { [key in K]: { query: [ListSubquery]; params: Record<never, any> } }
+    QuerySchema & { [key in K]: { query: [ListSubquery]; paramInputs: Record<never, any> } }
   >
 
   field<
     K extends Extract<keyof ObjectFields, string>,
-    SubquerySchema extends Record<string, { query: AnyQueryType; params: Record<string, AnyInputValueType> }>,
+    SubquerySchema extends Record<string, { query: AnyQueryType; paramInputs: Record<string, AnyInputValueType> }>,
     ObjectSubquery extends ObjectQueryTypeOf<ObjectFields[K]['type'], Variables, SubquerySchema>
   >(
     key: K,
@@ -502,7 +596,7 @@ class ObjectQueryType<
   ): ObjectQueryTypeOf<
     ResolverType,
     Variables,
-    QuerySchema & { [key in K]: { query: ObjectSubquery; params: Record<never, any> } }
+    QuerySchema & { [key in K]: { query: ObjectSubquery; paramInputs: Record<never, any> } }
   >
 
   field<
@@ -518,7 +612,7 @@ class ObjectQueryType<
     QuerySchema & {
       [key in K]: {
         query: [UnionQueryType<Union, UnionSubqueries<Union, SubqueryFactories>>]
-        params: Record<never, any>
+        paramInputs: Record<never, any>
       }
     }
   >
@@ -536,7 +630,7 @@ class ObjectQueryType<
     QuerySchema & {
       [key in K]: {
         query: UnionQueryType<Union, UnionSubqueries<Union, SubqueryFactories>>
-        params: Record<never, any>
+        paramInputs: Record<never, any>
       }
     }
   >
@@ -547,7 +641,9 @@ class ObjectQueryType<
   ): ObjectQueryTypeOf<
     ResolverType,
     Variables,
-    QuerySchema & { [key in K]: { query: [ScalarQueryType<ListFields[K]['type'][0]>]; params: Record<never, any> } }
+    QuerySchema & {
+      [key in K]: { query: [ScalarQueryType<ListFields[K]['type'][0]>]; paramInputs: Record<never, any> }
+    }
   >
 
   field<K extends Extract<keyof Fields, string>>(
@@ -556,7 +652,7 @@ class ObjectQueryType<
   ): ObjectQueryTypeOf<
     ResolverType,
     Variables,
-    QuerySchema & { [key in K]: { query: ScalarQueryType<Fields[K]['type']>; params: Record<never, any> } }
+    QuerySchema & { [key in K]: { query: ScalarQueryType<Fields[K]['type']>; paramInputs: Record<never, any> } }
   >
 
   field(key: Extract<keyof ResolverType['schema'], string>, makeSubquery: any): any {
@@ -589,13 +685,13 @@ class ObjectQueryType<
       ResolverType,
       Variables,
       QuerySchema & {
-        [key in K]: { query: ScalarQueryType<Fields[K]['type']>; params: Record<never, any> }
+        [key in K]: { query: ScalarQueryType<Fields[K]['type']>; paramInputs: Record<never, any> }
       }
     > = new ObjectQueryType(
       this.resolverType,
       {
         ...this.schema,
-        [key]: { query: new ScalarQueryType(fieldDesc.type), params: {} },
+        [key]: { query: new ScalarQueryType(fieldDesc.type), paramInputs: {} },
       },
       this.variables
     )
@@ -611,13 +707,13 @@ class ObjectQueryType<
       ResolverType,
       Variables,
       QuerySchema & {
-        [key in K]: { query: [ScalarQueryType<ListFields[K]['type']>]; params: Record<never, any> }
+        [key in K]: { query: [ScalarQueryType<ListFields[K]['type']>]; paramInputs: Record<never, any> }
       }
     > = new ObjectQueryType(
       this.resolverType,
       {
         ...this.schema,
-        [key]: { query: [new ScalarQueryType(fieldDesc.type)], params: {} },
+        [key]: { query: [new ScalarQueryType(fieldDesc.type)], paramInputs: {} },
       },
       this.variables
     )
@@ -627,7 +723,7 @@ class ObjectQueryType<
 
   _objectField<
     K extends Extract<keyof ObjectFields, string>,
-    SubquerySchema extends Record<string, { query: AnyQueryType; params: Record<string, AnyInputValueType> }>,
+    SubquerySchema extends Record<string, { query: AnyQueryType; paramInputs: Record<string, AnyInputValueType> }>,
     Subquery extends ObjectQueryTypeOf<ObjectFields[K]['type'], Variables, SubquerySchema>
   >(key: K, makeSubquery: (subquery: ObjectQueryTypeOf<ObjectFields[K]['type'], Variables>) => Subquery) {
     const schema = this.resolverType.schema as ObjectFields
@@ -640,13 +736,13 @@ class ObjectQueryType<
       ResolverType,
       Variables,
       QuerySchema & {
-        [key in K]: { query: Subquery; params: Record<never, any> }
+        [key in K]: { query: Subquery; paramInputs: Record<never, any> }
       }
     > = new ObjectQueryType(
       this.resolverType,
       {
         ...this.schema,
-        [key]: { query: subquery, params: {} },
+        [key]: { query: subquery, paramInputs: {} },
       },
       this.variables
     )
@@ -656,7 +752,7 @@ class ObjectQueryType<
 
   _objectListField<
     K extends Extract<keyof ObjectListFields, string>,
-    SubquerySchema extends Record<string, { query: AnyQueryType; params: Record<string, AnyInputValueType> }>,
+    SubquerySchema extends Record<string, { query: AnyQueryType; paramInputs: Record<string, AnyInputValueType> }>,
     Subquery extends ObjectQueryTypeOf<ObjectListFields[K]['type'][0], Variables, SubquerySchema>
   >(key: K, makeSubquery: (subquery: ObjectQueryTypeOf<ObjectListFields[K]['type'][0], Variables>) => Subquery) {
     const schema = this.resolverType.schema as ObjectListFields
@@ -669,13 +765,13 @@ class ObjectQueryType<
       ResolverType,
       Variables,
       QuerySchema & {
-        [key in K]: { query: [Subquery]; params: Record<never, any> }
+        [key in K]: { query: [Subquery]; paramInputs: Record<never, any> }
       }
     > = new ObjectQueryType(
       this.resolverType,
       {
         ...this.schema,
-        [key]: { query: [subquery], params: {} },
+        [key]: { query: [subquery], paramInputs: {} },
       },
       this.variables
     )
@@ -713,14 +809,14 @@ class ObjectQueryType<
       QuerySchema & {
         [key in K]: {
           query: UnionQueryType<Union, UnionSubqueries<Union, SubqueryFactories>>
-          params: Record<never, any>
+          paramInputs: Record<never, any>
         }
       }
     > = new ObjectQueryType(
       this.resolverType,
       {
         ...this.schema,
-        [key]: { query: unionQuery, params: {} },
+        [key]: { query: unionQuery, paramInputs: {} },
       },
       this.variables
     )
@@ -758,14 +854,14 @@ class ObjectQueryType<
       QuerySchema & {
         [key in K]: {
           query: [UnionQueryType<Union, UnionSubqueries<Union, SubqueryFactories>>]
-          params: Record<never, any>
+          paramInputs: Record<never, any>
         }
       }
     > = new ObjectQueryType(
       this.resolverType,
       {
         ...this.schema,
-        [key]: { query: [unionQuery], params: {} },
+        [key]: { query: [unionQuery], paramInputs: {} },
       },
       this.variables
     )
@@ -825,6 +921,24 @@ function generateQueryVariableString<Q extends AnyObjectQueryType>(queryType: Q)
   ].join('')
 }
 
+function generateQueryFieldParamInputStringPart<P extends Record<string, AnyInputValueType>>(paramInputs: P): string {
+  const paramInputEntries = Object.entries(paramInputs)
+  if (paramInputEntries.length === 0) {
+    return ''
+  }
+
+  return [
+    '(',
+    paramInputEntries
+      .map(
+        ([key, fieldDesc]) =>
+          `${key}: ${fieldDesc instanceof VariableInput ? `$${fieldDesc.name}` : generateSchemaPart(fieldDesc).inline}`
+      )
+      .join(', '),
+    ')',
+  ].join('')
+}
+
 function generateQueryStringPart<Q extends AnyQueryType>(queryType: Q): string {
   if (Array.isArray(queryType)) {
     return generateQueryStringPart(queryType[0])
@@ -840,7 +954,11 @@ function generateQueryStringPart<Q extends AnyQueryType>(queryType: Q): string {
 
   if (queryType instanceof ObjectQueryType) {
     const fields = Object.entries(queryType.schema).map(([key, subqueryType]) => {
-      return `${key} ${generateQueryStringPart(subqueryType.query).replace(/^/gm, '  ').trim()}`.trim()
+      return `${key}${generateQueryFieldParamInputStringPart(subqueryType.paramInputs)} ${generateQueryStringPart(
+        subqueryType.query
+      )
+        .replace(/^/gm, '  ')
+        .trim()}`.trim()
     })
 
     return ['{', ...fields.map((key) => `  ${key}`), '}'].join('\n')
