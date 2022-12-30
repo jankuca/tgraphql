@@ -251,6 +251,12 @@ type ParamValue<T extends AnyParamType> = T extends [infer I extends AnyParamTyp
   ? string
   : T
 
+type VariableDescriptor<T extends { type: AnyInputValueType; optional: boolean }> = {
+  type: T['type']
+  optional: T['optional']
+  defaultValue: true extends T['optional'] ? any : InputValue<T['type']>
+}
+
 type AnyParamType = ScalarType | EnumValueType<string> | [AnyParamType] | [AnyParamType, null]
 
 type ParamDescriptor<T extends { type: AnyParamType; optional: boolean }> = {
@@ -259,7 +265,7 @@ type ParamDescriptor<T extends { type: AnyParamType; optional: boolean }> = {
   defaultValue: true extends T['optional'] ? any : ParamValue<T['type']>
 }
 
-type VariableValues<T extends Record<string, { type: AnyInputValueType; optional: boolean }>> = {
+type VariableValues<T extends Record<string, VariableDescriptor<{ type: AnyInputValueType; optional: boolean }>>> = {
   [key in keyof T]: InputValue<T[key]['type']>
 }
 
@@ -513,7 +519,7 @@ type AnyUnionListType = [AnyUnionType] | [AnyUnionType, null]
 
 type AnyObjectQueryType = ObjectQueryType<
   AnyObjectType,
-  Record<string, { type: AnyInputValueType; optional: boolean }>,
+  Record<string, VariableDescriptor<{ type: AnyInputValueType; optional: boolean }>>,
   Record<string, { query: AnyQueryType; paramInputs: Record<string, AnyParamInputType> }>,
   Record<string, { key: string; type: AnyScalarType; optional: boolean; params: AnyParamObjectType | null }>,
   Record<string, { key: string; type: AnyScalarListType; optional: boolean; params: AnyParamObjectType | null }>,
@@ -626,7 +632,7 @@ type UnionSubqueries<U extends AnyUnionType, Factories extends UnionSubqueryFact
 
 type UnionSubqueryFactories<
   U extends AnyUnionType,
-  Variables extends Record<string, { type: AnyInputValueType; optional: boolean }>
+  Variables extends Record<string, VariableDescriptor<{ type: AnyInputValueType; optional: boolean }>>
 > = {
   [T in UnionTypeNames<U>]: (
     subquery: ObjectQueryTypeOf<UnionTypeByName<U, T>, Variables>
@@ -670,7 +676,7 @@ type VariableFieldParams<
 
 type ObjectQueryTypeOf<
   ResolverType extends AnyObjectType,
-  Variables extends Record<string, { type: AnyInputValueType; optional: boolean }>,
+  Variables extends Record<string, VariableDescriptor<{ type: AnyInputValueType; optional: boolean }>>,
   QuerySchema extends Record<string, { query: AnyQueryType; paramInputs: Record<string, AnyParamInputType> }> = Record<
     never,
     any
@@ -689,7 +695,7 @@ type ObjectQueryTypeOf<
 
 class ObjectQueryType<
   ResolverType extends AnyObjectType,
-  Variables extends Record<string, { type: AnyInputValueType; optional: boolean }>,
+  Variables extends Record<string, VariableDescriptor<{ type: AnyInputValueType; optional: boolean }>>,
   QuerySchema extends Record<string, { query: AnyQueryType; paramInputs: Record<string, AnyParamInputType> }>,
   Fields extends ScalarResolvers<ResolverType>,
   ListFields extends ScalarListResolvers<ResolverType>,
@@ -1041,24 +1047,24 @@ class ObjectQueryType<
   variable<K extends string, T extends AnyInputValueType>(key: K, type: T) {
     const nextQueryType: ObjectQueryTypeOf<
       ResolverType,
-      Variables & { [key in K]: { type: T; optional: false } },
+      Variables & { [key in K]: { type: T; optional: false; defaultValue: null } },
       QuerySchema
     > = new ObjectQueryType(this.resolverType, this.schema, {
       ...this.variables,
-      [key]: { type, optional: false },
+      [key]: { type, optional: false, defaultValue: null },
     })
 
     return nextQueryType
   }
 
-  optionalVariable<K extends string, T extends AnyInputValueType>(key: K, type: T) {
+  optionalVariable<K extends string, T extends AnyInputValueType>(key: K, type: T, defaultValue: InputValue<T>) {
     const nextQueryType: ObjectQueryTypeOf<
       ResolverType,
-      Variables & { [key in K]: { type: T; optional: true } },
+      Variables & { [key in K]: { type: T; optional: true; defaultValue: InputValue<T> } },
       QuerySchema
     > = new ObjectQueryType(this.resolverType, this.schema, {
       ...this.variables,
-      [key]: { type, optional: true },
+      [key]: { type, optional: true, defaultValue },
     })
 
     return nextQueryType
@@ -1094,7 +1100,10 @@ function generateQueryVariableString<Q extends AnyObjectQueryType>(queryType: Q)
     '(',
     variableEntries
       .map(
-        ([key, fieldDesc]) => `$${key}: ${generateSchemaPart(fieldDesc.type).inline}${fieldDesc.optional ? '' : '!'}`
+        ([key, fieldDesc]) =>
+          `$${key}: ${generateSchemaPart(fieldDesc.type).inline}${fieldDesc.optional ? '' : '!'}${
+            fieldDesc.optional ? ' = ' + generateParamInputString(fieldDesc.defaultValue) : ''
+          }`
       )
       .join(', '),
     ')',
@@ -1249,7 +1258,7 @@ try {
 try {
   const SearchCatchups = queryType()
     .variable('s', 'String')
-    .optionalVariable('lim', 'Int')
+    .optionalVariable('lim', 'Int', 5)
     .paramField('searchCatchups', { 'name': variable('s'), 'limit': variable('lim') }, (catchup) =>
       catchup.field('id').field('name')
     )
