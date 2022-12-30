@@ -222,6 +222,12 @@ type ParamDescriptor<T extends { type: AnyParamType; optional: boolean }> = {
   defaultValue: true extends T['optional'] ? any : ParamValue<T['type']>
 }
 
+type ParamValues<T extends AnyParamObjectType> = T extends ParamObjectType<infer T>
+  ? {
+      [key in keyof T]: T[key]['optional'] extends true ? ParamValue<T[key]['type']> | null : ParamValue<T[key]['type']>
+    }
+  : never
+
 // Testing:
 // type U = Value<typeof User>
 // type A = Value<typeof Attendee>
@@ -559,6 +565,12 @@ type UnionSubqueryFactories<
   >
 }
 
+type FieldParams<Field extends { params: AnyParamObjectType | null }> = Field['params'] extends AnyParamObjectType
+  ? {
+      [K in Extract<keyof ParamValues<Field['params']>, string>]: ParamValues<Field['params']>[K]
+    }
+  : Record<never, any>
+
 type ObjectQueryTypeOf<
   ResolverType extends AnyObjectType,
   Variables extends Record<string, { type: AnyInputValueType; optional: boolean }>,
@@ -798,6 +810,40 @@ class ObjectQueryType<
       {
         ...this.schema,
         [key]: { query: [subquery], paramInputs: {} },
+      },
+      this.variables
+    )
+
+    return nextQueryType
+  }
+
+  paramField<
+    K extends Extract<keyof ObjectListFields, string>,
+    Params extends FieldParams<ObjectListFields[K]>,
+    SubquerySchema extends Record<string, { query: AnyQueryType; paramInputs: Record<never, any> }>,
+    Subquery extends ObjectQueryTypeOf<ObjectListFields[K]['type'][0], Variables, SubquerySchema>
+  >(
+    key: K,
+    paramInputs: Params,
+    makeSubquery: (subquery: ObjectQueryTypeOf<ObjectListFields[K]['type'][0], Variables>) => Subquery
+  ) {
+    const schema = this.resolverType.schema as ObjectListFields
+    const fieldDesc = schema[key]
+
+    const emptySubquery = new ObjectQueryType(fieldDesc.type[0], {}, this.variables)
+    const subquery = makeSubquery(emptySubquery)
+
+    const nextQueryType: ObjectQueryTypeOf<
+      ResolverType,
+      Variables,
+      QuerySchema & {
+        [key in K]: { query: [Subquery]; paramInputs: Params }
+      }
+    > = new ObjectQueryType(
+      this.resolverType,
+      {
+        ...this.schema,
+        [key]: { query: [subquery], paramInputs },
       },
       this.variables
     )
@@ -1045,7 +1091,7 @@ type k = typeof AnyUser['types'][0]['typename']
 try {
   const ListCatchups = queryType()
     .variable('x', 'Int')
-    .field('recentCatchups', (catchup) =>
+    .paramField('recentCatchups', { 'limit': 10 }, (catchup) =>
       catchup
         .field('id')
         .field('name')
