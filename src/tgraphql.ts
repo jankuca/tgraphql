@@ -1016,48 +1016,52 @@ type Z = keyof ScalarResolvers<typeof Attendee>
 type names = UnionTypeNames<typeof AnyUser>
 type k = typeof AnyUser['types'][0]['typename']
 
-const ListCatchups = queryType()
-  .variable('x', 'Int')
-  .field('recentCatchups', (catchup) =>
-    catchup
-      .field('id')
-      .field('name')
-      .field('author', (author) => author.field('name'))
-      // .field('attendees', (attendee) =>
-      //   attendee.field('access_level').field('user', (user) => user.field('id').field('name'))
-      // )
-      .field('attendees', (attendee) =>
-        attendee
-          .field('access_level')
-          .field('user', {
-            'User': (user) => user.field('id').field('name').field('joined_at'),
-            'PseudoUser': (user) =>
-              user
-                .field('id')
-                .field('name')
-                .field('origin_user', (originUser) => originUser.field('id').field('name')),
-          })
-          .field('maybe_access_level')
-          .field('maybe_user', {
-            'User': (user) => user.field('id').field('name').field('joined_at'),
-            'PseudoUser': (user) =>
-              user
-                .field('id')
-                .field('name')
-                .field('origin_user', (originUser) => originUser.field('id').field('name')),
-          })
-      )
-  )
+try {
+  const ListCatchups = queryType()
+    .variable('x', 'Int')
+    .field('recentCatchups', (catchup) =>
+      catchup
+        .field('id')
+        .field('name')
+        .field('author', (author) => author.field('name'))
+        // .field('attendees', (attendee) =>
+        //   attendee.field('access_level').field('user', (user) => user.field('id').field('name'))
+        // )
+        .field('attendees', (attendee) =>
+          attendee
+            .field('access_level')
+            .field('user', {
+              'User': (user) => user.field('id').field('name').field('joined_at'),
+              'PseudoUser': (user) =>
+                user
+                  .field('id')
+                  .field('name')
+                  .field('origin_user', (originUser) => originUser.field('id').field('name')),
+            })
+            .field('maybe_access_level')
+            .field('maybe_user', {
+              'User': (user) => user.field('id').field('name').field('joined_at'),
+              'PseudoUser': (user) =>
+                user
+                  .field('id')
+                  .field('name')
+                  .field('origin_user', (originUser) => originUser.field('id').field('name')),
+            })
+        )
+    )
 
-type Vars = typeof ListCatchups['variables']
-const nestedQ = ListCatchups.schema.recentCatchups.query[0].schema.attendees.query[0]
-type NestedVars = typeof nestedQ['variables']
+  type Vars = typeof ListCatchups['variables']
+  const nestedQ = ListCatchups.schema.recentCatchups.query[0].schema.attendees.query[0]
+  type NestedVars = typeof nestedQ['variables']
 
-const queryData = useQuery(ListCatchups).data
-queryData.recentCatchups[0]?.attendees[0]?.user.name
-const u = queryData.recentCatchups[0]?.attendees[0]?.user
-queryData.recentCatchups[0]?.attendees[0]?.maybe_user
-const j = u && 'joined_at' in u ? u.joined_at : 0
-// queryData.recentCatchups[0]?.name
-queryData.recentCatchups[0]?.attendees[0]?.access_level
-queryData.recentCatchups[0]?.attendees[0]?.maybe_access_level
+  const queryData = useQuery(ListCatchups).data
+  queryData.recentCatchups[0]?.attendees[0]?.user.name
+  const u = queryData.recentCatchups[0]?.attendees[0]?.user
+  queryData.recentCatchups[0]?.attendees[0]?.maybe_user
+  const j = u && 'joined_at' in u ? u.joined_at : 0
+  // queryData.recentCatchups[0]?.name
+  queryData.recentCatchups[0]?.attendees[0]?.access_level
+  queryData.recentCatchups[0]?.attendees[0]?.maybe_access_level
+} catch (err) {
+  console.error('err:', err)
+}
