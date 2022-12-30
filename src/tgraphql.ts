@@ -207,6 +207,12 @@ const Mutation = objectType('Mutation')
   .field('increase', 'Int')
   .paramField('increaseBy', (params) => params.field('by', 'Int'), 'Int')
 
+const Notification = objectType('Notification').field('id', 'ID').field('message', 'String')
+
+const Subscription = objectType('Subscription')
+  .field('notification', Notification)
+  .listParamField('notifications', (params) => params.optionalField('limit', 'Int', 3), [Notification])
+
 type AnyType =
   | ObjectType<string, Record<string, { type: AnyType; optional: boolean; params: AnyParamObjectType | null }>>
   | EnumType<string, ReadonlyArray<string>>
@@ -1126,7 +1132,10 @@ function variable<Name extends string>(name: Name) {
   return new VariableInput(name)
 }
 
-function generateQueryString<Q extends AnyObjectQueryType>(queryType: Q, op: 'query' | 'mutation'): string {
+function generateQueryString<Q extends AnyObjectQueryType>(
+  queryType: Q,
+  op: 'query' | 'mutation' | 'subscription'
+): string {
   return [op, generateQueryVariableString(queryType), generateQueryStringPart(queryType)].filter(Boolean).join(' ')
 }
 
@@ -1351,8 +1360,28 @@ function useMutation<M extends AnyObjectQueryType>(mutationType: M): { data: Que
   return { data: {} } as any
 }
 
+function subscriptionType() {
+  return new ObjectQueryType(Subscription, {}, {})
+}
+
+function useSubscription<M extends AnyObjectQueryType>(subscriptionType: M): { data: QueryResult<M> } {
+  const gql = generateQueryString(subscriptionType, 'subscription')
+  console.log(gql)
+  return { data: {} } as any
+}
+
 const Increase = mutationType().field('increase')
 const increaseData = useMutation(Increase).data
 
 const IncreaseBy = mutationType().scalarParamField('increaseBy', { 'by': 2 })
 const increaseByData = useMutation(IncreaseBy).data
+
+const NotificationSubscription = subscriptionType().field('notification', (notification) =>
+  notification.field('message')
+)
+const notificationSubscriptionData = useSubscription(NotificationSubscription).data
+
+const NotificationListSubscription = subscriptionType().paramField('notifications', { 'limit': 2 }, (notification) =>
+  notification.field('message')
+)
+const notificationListSubscriptionData = useSubscription(NotificationListSubscription).data
