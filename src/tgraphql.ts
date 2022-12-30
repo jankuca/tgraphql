@@ -328,7 +328,7 @@ type AnyUnionListType = [AnyUnionType] | [AnyUnionType, null]
 type AnyObjectQueryType = ObjectQueryType<
   ObjectType<string, Record<string, { type: AnyType; optional: boolean }>>,
   Record<string, { type: AnyInputValueType; optional: boolean }>,
-  Record<string, AnyQueryType>,
+  Record<string, { query: AnyQueryType; params: Record<string, AnyInputValueType> }>,
   Record<string, { key: string; type: AnyScalarType; optional: boolean }>,
   Record<string, { key: string; type: AnyScalarListType; optional: boolean }>,
   Record<string, { key: string; type: AnyObjectType; optional: boolean }>,
@@ -432,13 +432,20 @@ type UnionSubqueryFactories<
 > = {
   [T in UnionTypeNames<U>]: (
     subquery: ObjectQueryTypeOf<UnionTypeByName<U, T>, Variables>
-  ) => ObjectQueryTypeOf<UnionTypeByName<U, T>, Variables, Record<string, AnyQueryType>>
+  ) => ObjectQueryTypeOf<
+    UnionTypeByName<U, T>,
+    Variables,
+    Record<string, { query: AnyQueryType; params: Record<string, AnyInputValueType> }>
+  >
 }
 
 type ObjectQueryTypeOf<
   ResolverType extends AnyObjectType,
   Variables extends Record<string, { type: AnyInputValueType; optional: boolean }>,
-  QuerySchema extends Record<string, AnyQueryType> = Record<never, AnyQueryType>
+  QuerySchema extends Record<string, { query: AnyQueryType; params: Record<string, AnyInputValueType> }> = Record<
+    never,
+    any
+  >
 > = ObjectQueryType<
   ResolverType,
   Variables,
@@ -454,7 +461,7 @@ type ObjectQueryTypeOf<
 class ObjectQueryType<
   ResolverType extends AnyObjectType,
   Variables extends Record<string, { type: AnyInputValueType; optional: boolean }>,
-  QuerySchema extends Record<string, AnyQueryType>,
+  QuerySchema extends Record<string, { query: AnyQueryType; params: Record<string, AnyInputValueType> }>,
   Fields extends ScalarResolvers<ResolverType>,
   ListFields extends ScalarListResolvers<ResolverType>,
   ObjectFields extends ObjectResolvers<ResolverType>,
@@ -474,21 +481,29 @@ class ObjectQueryType<
 
   field<
     K extends Extract<keyof ObjectListFields, string>,
-    SubquerySchema extends Record<string, AnyQueryType>,
+    SubquerySchema extends Record<string, { query: AnyQueryType; params: Record<string, AnyInputValueType> }>,
     ListSubquery extends ObjectQueryTypeOf<ObjectListFields[K]['type'][0], Variables, SubquerySchema>
   >(
     key: K,
     makeSubquery: (subquery: ObjectQueryTypeOf<ObjectListFields[K]['type'][0], Variables>) => ListSubquery
-  ): ObjectQueryTypeOf<ResolverType, Variables, QuerySchema & { [key in K]: [ListSubquery] }>
+  ): ObjectQueryTypeOf<
+    ResolverType,
+    Variables,
+    QuerySchema & { [key in K]: { query: [ListSubquery]; params: Record<never, any> } }
+  >
 
   field<
     K extends Extract<keyof ObjectFields, string>,
-    SubquerySchema extends Record<string, AnyQueryType>,
+    SubquerySchema extends Record<string, { query: AnyQueryType; params: Record<string, AnyInputValueType> }>,
     ObjectSubquery extends ObjectQueryTypeOf<ObjectFields[K]['type'], Variables, SubquerySchema>
   >(
     key: K,
     makeSubquery: (subquery: ObjectQueryTypeOf<ObjectFields[K]['type'], Variables>) => ObjectSubquery
-  ): ObjectQueryTypeOf<ResolverType, Variables, QuerySchema & { [key in K]: ObjectSubquery }>
+  ): ObjectQueryTypeOf<
+    ResolverType,
+    Variables,
+    QuerySchema & { [key in K]: { query: ObjectSubquery; params: Record<never, any> } }
+  >
 
   field<
     K extends Extract<keyof UnionListFields, string>,
@@ -501,7 +516,10 @@ class ObjectQueryType<
     ResolverType,
     Variables,
     QuerySchema & {
-      [key in K]: [UnionQueryType<Union, UnionSubqueries<Union, SubqueryFactories>>]
+      [key in K]: {
+        query: [UnionQueryType<Union, UnionSubqueries<Union, SubqueryFactories>>]
+        params: Record<never, any>
+      }
     }
   >
 
@@ -516,7 +534,10 @@ class ObjectQueryType<
     ResolverType,
     Variables,
     QuerySchema & {
-      [key in K]: UnionQueryType<Union, UnionSubqueries<Union, SubqueryFactories>>
+      [key in K]: {
+        query: UnionQueryType<Union, UnionSubqueries<Union, SubqueryFactories>>
+        params: Record<never, any>
+      }
     }
   >
 
@@ -526,13 +547,17 @@ class ObjectQueryType<
   ): ObjectQueryTypeOf<
     ResolverType,
     Variables,
-    QuerySchema & { [key in K]: [ScalarQueryType<ListFields[K]['type'][0]>] }
+    QuerySchema & { [key in K]: { query: [ScalarQueryType<ListFields[K]['type'][0]>]; params: Record<never, any> } }
   >
 
   field<K extends Extract<keyof Fields, string>>(
     key: K,
     makeSubquery?: undefined
-  ): ObjectQueryTypeOf<ResolverType, Variables, QuerySchema & { [key in K]: ScalarQueryType<Fields[K]['type']> }>
+  ): ObjectQueryTypeOf<
+    ResolverType,
+    Variables,
+    QuerySchema & { [key in K]: { query: ScalarQueryType<Fields[K]['type']>; params: Record<never, any> } }
+  >
 
   field(key: Extract<keyof ResolverType['schema'], string>, makeSubquery: any): any {
     const schema = this.resolverType.schema
@@ -564,13 +589,13 @@ class ObjectQueryType<
       ResolverType,
       Variables,
       QuerySchema & {
-        [key in K]: ScalarQueryType<Fields[K]['type']>
+        [key in K]: { query: ScalarQueryType<Fields[K]['type']>; params: Record<never, any> }
       }
     > = new ObjectQueryType(
       this.resolverType,
       {
         ...this.schema,
-        [key]: new ScalarQueryType(fieldDesc.type),
+        [key]: { query: new ScalarQueryType(fieldDesc.type), params: {} },
       },
       this.variables
     )
@@ -586,13 +611,13 @@ class ObjectQueryType<
       ResolverType,
       Variables,
       QuerySchema & {
-        [key in K]: [ScalarQueryType<ListFields[K]['type']>]
+        [key in K]: { query: [ScalarQueryType<ListFields[K]['type']>]; params: Record<never, any> }
       }
     > = new ObjectQueryType(
       this.resolverType,
       {
         ...this.schema,
-        [key]: [new ScalarQueryType(fieldDesc.type)],
+        [key]: { query: [new ScalarQueryType(fieldDesc.type)], params: {} },
       },
       this.variables
     )
@@ -602,7 +627,7 @@ class ObjectQueryType<
 
   _objectField<
     K extends Extract<keyof ObjectFields, string>,
-    SubquerySchema extends Record<string, AnyQueryType>,
+    SubquerySchema extends Record<string, { query: AnyQueryType; params: Record<string, AnyInputValueType> }>,
     Subquery extends ObjectQueryTypeOf<ObjectFields[K]['type'], Variables, SubquerySchema>
   >(key: K, makeSubquery: (subquery: ObjectQueryTypeOf<ObjectFields[K]['type'], Variables>) => Subquery) {
     const schema = this.resolverType.schema as ObjectFields
@@ -615,13 +640,13 @@ class ObjectQueryType<
       ResolverType,
       Variables,
       QuerySchema & {
-        [key in K]: Subquery
+        [key in K]: { query: Subquery; params: Record<never, any> }
       }
     > = new ObjectQueryType(
       this.resolverType,
       {
         ...this.schema,
-        [key]: subquery,
+        [key]: { query: subquery, params: {} },
       },
       this.variables
     )
@@ -631,7 +656,7 @@ class ObjectQueryType<
 
   _objectListField<
     K extends Extract<keyof ObjectListFields, string>,
-    SubquerySchema extends Record<string, AnyQueryType>,
+    SubquerySchema extends Record<string, { query: AnyQueryType; params: Record<string, AnyInputValueType> }>,
     Subquery extends ObjectQueryTypeOf<ObjectListFields[K]['type'][0], Variables, SubquerySchema>
   >(key: K, makeSubquery: (subquery: ObjectQueryTypeOf<ObjectListFields[K]['type'][0], Variables>) => Subquery) {
     const schema = this.resolverType.schema as ObjectListFields
@@ -644,13 +669,13 @@ class ObjectQueryType<
       ResolverType,
       Variables,
       QuerySchema & {
-        [key in K]: [Subquery]
+        [key in K]: { query: [Subquery]; params: Record<never, any> }
       }
     > = new ObjectQueryType(
       this.resolverType,
       {
         ...this.schema,
-        [key]: [subquery],
+        [key]: { query: [subquery], params: {} },
       },
       this.variables
     )
@@ -686,13 +711,16 @@ class ObjectQueryType<
       ResolverType,
       Variables,
       QuerySchema & {
-        [key in K]: UnionQueryType<Union, UnionSubqueries<Union, SubqueryFactories>>
+        [key in K]: {
+          query: UnionQueryType<Union, UnionSubqueries<Union, SubqueryFactories>>
+          params: Record<never, any>
+        }
       }
     > = new ObjectQueryType(
       this.resolverType,
       {
         ...this.schema,
-        [key]: unionQuery,
+        [key]: { query: unionQuery, params: {} },
       },
       this.variables
     )
@@ -728,13 +756,16 @@ class ObjectQueryType<
       ResolverType,
       Variables,
       QuerySchema & {
-        [key in K]: [UnionQueryType<Union, UnionSubqueries<Union, SubqueryFactories>>]
+        [key in K]: {
+          query: [UnionQueryType<Union, UnionSubqueries<Union, SubqueryFactories>>]
+          params: Record<never, any>
+        }
       }
     > = new ObjectQueryType(
       this.resolverType,
       {
         ...this.schema,
-        [key]: [unionQuery],
+        [key]: { query: [unionQuery], params: {} },
       },
       this.variables
     )
@@ -809,7 +840,7 @@ function generateQueryStringPart<Q extends AnyQueryType>(queryType: Q): string {
 
   if (queryType instanceof ObjectQueryType) {
     const fields = Object.entries(queryType.schema).map(([key, subqueryType]) => {
-      return `${key} ${generateQueryStringPart(subqueryType).replace(/^/gm, '  ').trim()}`.trim()
+      return `${key} ${generateQueryStringPart(subqueryType.query).replace(/^/gm, '  ').trim()}`.trim()
     })
 
     return ['{', ...fields.map((key) => `  ${key}`), '}'].join('\n')
@@ -831,7 +862,7 @@ type QueryResult<Q extends AnyQueryType> = Q extends [infer T extends AnyObjectQ
   : Q extends ObjectQueryType<infer ResolverType, any, infer QuerySchema, any, any, any, any, any, any>
   ? {
       [K in keyof QuerySchema]:
-        | QueryResult<QuerySchema[K]>
+        | QueryResult<QuerySchema[K]['query']>
         | (K extends keyof ResolverType['schema']
             ? ResolverType['schema'][K]['optional'] extends true
               ? null
@@ -901,6 +932,8 @@ const ListCatchups = queryType()
   )
 
 type Vars = typeof ListCatchups['variables']
+const nestedQ = ListCatchups.schema.recentCatchups.query[0].schema.attendees.query[0]
+type NestedVars = typeof nestedQ['variables']
 
 const queryData = useQuery(ListCatchups).data
 queryData.recentCatchups[0]?.attendees[0]?.user.name
