@@ -22,4 +22,10 @@ type Resolver<T extends AnyType> = T extends [infer I extends AnyType, null]
   ? () => string
   : T
 
-export type SchemaResolvers<Q extends ObjectType<'Query', any>> = { Query: Resolver<Q> }
+export type SchemaResolvers<
+  Query extends ObjectType<'Query', any> | null = null,
+  Mutation extends ObjectType<'Mutation', any> | null = null,
+  Subscription extends ObjectType<'Subscription', any> | null = null
+> = (Query extends AnyObjectType ? { 'Query': Resolver<Query> } : Record<never, any>) &
+  (Mutation extends AnyObjectType ? { 'Mutation': Resolver<Mutation> } : Record<never, any>) &
+  (Subscription extends AnyObjectType ? { 'Subscription': Resolver<Subscription> } : Record<never, any>)
