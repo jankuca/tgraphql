@@ -27,6 +27,16 @@ class ObjectType<
     })
   }
 
+  optionalField<K extends string, T extends AnyType>(
+    key: K,
+    type: T
+  ): ObjectType<Name, S & { [k in K]: { type: T; optional: true } }> {
+    return new ObjectType(this.typename, {
+      ...this.schema,
+      [key]: { type, optional: true },
+    })
+  }
+
   listField<K extends string, Ts extends readonly [AnyType] | readonly [AnyType, null]>(
     key: K,
     itemTypes: Ts
@@ -34,6 +44,16 @@ class ObjectType<
     return new ObjectType(this.typename, {
       ...this.schema,
       [key]: { type: itemTypes, optional: false },
+    })
+  }
+
+  optionalListField<K extends string, Ts extends readonly [AnyType] | readonly [AnyType, null]>(
+    key: K,
+    itemTypes: Ts
+  ): ObjectType<Name, S & { [k in K]: { type: Ts; optional: true } }> {
+    return new ObjectType(this.typename, {
+      ...this.schema,
+      [key]: { type: itemTypes, optional: true },
     })
   }
 }
@@ -84,9 +104,15 @@ const AnyUser = unionType('AnyUser', User, PseudoUser)
 const Attendee = objectType('Attendee')
   .field('id', 'ID')
   .field('user', AnyUser)
+  .optionalField('maybe_user', AnyUser)
   .field('access_level', CatchupAccessLevelEnum)
+  .optionalField('maybe_access_level', CatchupAccessLevelEnum)
 
-const Catchup = objectType('Catchup').field('id', 'ID').field('author', User).listField('attendees', [Attendee])
+const Catchup = objectType('Catchup')
+  .field('id', 'ID')
+  .optionalField('name', 'String')
+  .optionalField('author', User)
+  .listField('attendees', [Attendee])
 
 const Query = objectType('Query').listField('recentCatchups', [Catchup])
 
@@ -183,6 +209,8 @@ function listRecentCatchups(): Value<[typeof Catchup]> {
       const { 'user_id': userId, 'user_name': userName, ...attendee } = attendeeModel
       return {
         ...attendee,
+        'maybe_user': null,
+        'maybe_access_level': null,
         'user': { 'id': userId, 'name': userName, 'joined_at': '2022-10-10' },
       }
     }),
@@ -725,9 +753,15 @@ type QueryResult<Q extends AnyQueryType> = Q extends [infer T extends AnyObjectQ
   ? Array<QueryResult<T>>
   : Q extends UnionQueryType<any, infer SubQ extends UnionSubqueries<AnyUnionType, any>>
   ? QueryResult<SubQ[keyof SubQ]>
-  : Q extends ObjectQueryType<any, infer QuerySchema, any, any, any, any, any, any>
+  : Q extends ObjectQueryType<infer ResolverType, infer QuerySchema, any, any, any, any, any, any>
   ? {
-      [K in keyof QuerySchema]: QueryResult<QuerySchema[K]>
+      [K in keyof QuerySchema]:
+        | QueryResult<QuerySchema[K]>
+        | (K extends keyof ResolverType['schema']
+            ? ResolverType['schema'][K]['optional'] extends true
+              ? null
+              : never
+            : never)
     }
   : Q extends [infer T extends ScalarQueryType<AnyType>]
   ? Array<QueryResult<T>>
@@ -761,26 +795,39 @@ type k = typeof AnyUser['types'][0]['typename']
 const ListCatchups = queryType().field('recentCatchups', (catchup) =>
   catchup
     .field('id')
-    // .field('name')
+    .field('name')
     .field('author', (author) => author.field('name'))
     // .field('attendees', (attendee) =>
     //   attendee.field('access_level').field('user', (user) => user.field('id').field('name'))
     // )
     .field('attendees', (attendee) =>
-      attendee.field('access_level').field('user', {
-        'User': (user) => user.field('id').field('name').field('joined_at'),
-        'PseudoUser': (user) =>
-          user
-            .field('id')
-            .field('name')
-            .field('origin_user', (originUser) => originUser.field('id').field('name')),
-      })
+      attendee
+        .field('access_level')
+        .field('user', {
+          'User': (user) => user.field('id').field('name').field('joined_at'),
+          'PseudoUser': (user) =>
+            user
+              .field('id')
+              .field('name')
+              .field('origin_user', (originUser) => originUser.field('id').field('name')),
+        })
+        .field('maybe_access_level')
+        .field('maybe_user', {
+          'User': (user) => user.field('id').field('name').field('joined_at'),
+          'PseudoUser': (user) =>
+            user
+              .field('id')
+              .field('name')
+              .field('origin_user', (originUser) => originUser.field('id').field('name')),
+        })
     )
 )
 
 const queryData = useQuery(ListCatchups).data
 queryData.recentCatchups[0]?.attendees[0]?.user.name
 const u = queryData.recentCatchups[0]?.attendees[0]?.user
+queryData.recentCatchups[0]?.attendees[0]?.maybe_user
 const j = u && 'joined_at' in u ? u.joined_at : 0
 // queryData.recentCatchups[0]?.name
 queryData.recentCatchups[0]?.attendees[0]?.access_level
+queryData.recentCatchups[0]?.attendees[0]?.maybe_access_level
