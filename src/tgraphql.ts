@@ -147,6 +147,8 @@ type AnyParamObjectType = ParamObjectType<Record<string, ParamDescriptor<{ type:
 
 type AnyInputValueType = ScalarType | EnumValueType<string>
 
+type AnyParamInputType = AnyInputValueType | VariableInput<string>
+
 function objectType<Name extends string>(typename: Name) {
   return new ObjectType(typename, {})
 }
@@ -180,9 +182,11 @@ const Catchup = objectType('Catchup')
 
 const Query = objectType('Query')
   .listField('recentCatchups', [Catchup])
-  .listParamField('searchCatchups', (params) => params.field('limit', 'Int').optionalField('name', 'String', ''), [
-    Catchup,
-  ])
+  .listParamField(
+    'searchCatchups',
+    (params) => params.field('limit', 'Int').optionalField('page', 'Int', 1).optionalField('name', 'String', ''),
+    [Catchup]
+  )
 
 type SearchQueryParams = typeof Query.schema.searchCatchups.params
 
@@ -221,6 +225,16 @@ type Value<T extends AnyType> = T extends [infer I extends AnyType, null]
   ? string
   : T
 
+type InputValue<T extends AnyInputValueType> = T extends EnumValueType<infer I>
+  ? I
+  : T extends 'Int'
+  ? number
+  : T extends 'Bool'
+  ? boolean
+  : T extends ScalarType
+  ? string
+  : T
+
 type ParamValue<T extends AnyParamType> = T extends [infer I extends AnyParamType, null]
   ? Array<ParamValue<I>>
   : T extends [infer I extends AnyParamType]
@@ -243,9 +257,19 @@ type ParamDescriptor<T extends { type: AnyParamType; optional: boolean }> = {
   defaultValue: true extends T['optional'] ? any : ParamValue<T['type']>
 }
 
-type ParamValues<T extends AnyParamObjectType> = T extends ParamObjectType<infer T>
+type VariableValues<T extends Record<string, { type: AnyInputValueType; optional: boolean }>> = {
+  [key in keyof T]: InputValue<T[key]['type']>
+}
+
+type RequiredParamKeys<P extends AnyParamObjectType> = P extends ParamObjectType<infer T>
   ? {
-      [key in keyof T]: T[key]['optional'] extends true ? ParamValue<T[key]['type']> | null : ParamValue<T[key]['type']>
+      [key in keyof T]: T[key]['optional'] extends true ? never : key
+    }[keyof T]
+  : never
+
+type ParamValues<P extends AnyParamObjectType> = P extends ParamObjectType<infer T>
+  ? {
+      [key in keyof T]: ParamValue<T[key]['type']>
     }
   : never
 
@@ -464,7 +488,7 @@ type AnyUnionListType = [AnyUnionType] | [AnyUnionType, null]
 type AnyObjectQueryType = ObjectQueryType<
   AnyObjectType,
   Record<string, { type: AnyInputValueType; optional: boolean }>,
-  Record<string, { query: AnyQueryType; paramInputs: Record<string, AnyInputValueType> }>,
+  Record<string, { query: AnyQueryType; paramInputs: Record<string, AnyParamInputType> }>,
   Record<string, { key: string; type: AnyScalarType; optional: boolean; params: AnyParamObjectType | null }>,
   Record<string, { key: string; type: AnyScalarListType; optional: boolean; params: AnyParamObjectType | null }>,
   Record<string, { key: string; type: AnyObjectType; optional: boolean; params: AnyParamObjectType | null }>,
@@ -583,20 +607,45 @@ type UnionSubqueryFactories<
   ) => ObjectQueryTypeOf<
     UnionTypeByName<U, T>,
     Variables,
-    Record<string, { query: AnyQueryType; paramInputs: Record<string, AnyInputValueType> }>
+    Record<string, { query: AnyQueryType; paramInputs: Record<string, AnyParamInputType> }>
   >
 }
 
-type FieldParams<Field extends { params: AnyParamObjectType | null }> = Field['params'] extends AnyParamObjectType
-  ? {
-      [K in Extract<keyof ParamValues<Field['params']>, string>]: ParamValues<Field['params']>[K]
-    }
+type ParamVariables<
+  Param,
+  Variables extends Record<string, VariableDescriptor<{ type: AnyInputValueType; optional: boolean }>>
+> = {
+  [V in Extract<keyof VariableValues<Variables>, string>]: VariableValues<Variables>[V] extends Param
+    ? VariableInput<V>
+    : never
+}[Extract<keyof VariableValues<Variables>, string>]
+
+type VariableFieldParams<
+  Field extends { params: AnyParamObjectType | null },
+  Variables extends Record<string, VariableDescriptor<{ type: AnyInputValueType; optional: boolean }>>
+> = Field['params'] extends AnyParamObjectType
+  ? Pick<
+      {
+        [K in keyof ParamValues<Field['params']>]:
+          | ParamValues<Field['params']>[K]
+          | ParamVariables<ParamValues<Field['params']>[K], Variables>
+      },
+      RequiredParamKeys<Field['params']>
+    > &
+      Omit<
+        {
+          [K in keyof ParamValues<Field['params']>]?:
+            | ParamValues<Field['params']>[K]
+            | ParamVariables<ParamValues<Field['params']>[K], Variables>
+        },
+        RequiredParamKeys<Field['params']>
+      >
   : Record<never, any>
 
 type ObjectQueryTypeOf<
   ResolverType extends AnyObjectType,
   Variables extends Record<string, { type: AnyInputValueType; optional: boolean }>,
-  QuerySchema extends Record<string, { query: AnyQueryType; paramInputs: Record<string, AnyInputValueType> }> = Record<
+  QuerySchema extends Record<string, { query: AnyQueryType; paramInputs: Record<string, AnyParamInputType> }> = Record<
     never,
     any
   >
@@ -615,7 +664,7 @@ type ObjectQueryTypeOf<
 class ObjectQueryType<
   ResolverType extends AnyObjectType,
   Variables extends Record<string, { type: AnyInputValueType; optional: boolean }>,
-  QuerySchema extends Record<string, { query: AnyQueryType; paramInputs: Record<string, AnyInputValueType> }>,
+  QuerySchema extends Record<string, { query: AnyQueryType; paramInputs: Record<string, AnyParamInputType> }>,
   Fields extends ScalarResolvers<ResolverType>,
   ListFields extends ScalarListResolvers<ResolverType>,
   ObjectFields extends ObjectResolvers<ResolverType>,
@@ -635,7 +684,7 @@ class ObjectQueryType<
 
   field<
     K extends Extract<keyof ObjectListFields, string>,
-    SubquerySchema extends Record<string, { query: AnyQueryType; paramInputs: Record<string, AnyInputValueType> }>,
+    SubquerySchema extends Record<string, { query: AnyQueryType; paramInputs: Record<string, AnyParamInputType> }>,
     ListSubquery extends ObjectQueryTypeOf<ObjectListFields[K]['type'][0], Variables, SubquerySchema>
   >(
     key: K,
@@ -648,7 +697,7 @@ class ObjectQueryType<
 
   field<
     K extends Extract<keyof ObjectFields, string>,
-    SubquerySchema extends Record<string, { query: AnyQueryType; paramInputs: Record<string, AnyInputValueType> }>,
+    SubquerySchema extends Record<string, { query: AnyQueryType; paramInputs: Record<string, AnyParamInputType> }>,
     ObjectSubquery extends ObjectQueryTypeOf<ObjectFields[K]['type'], Variables, SubquerySchema>
   >(
     key: K,
@@ -783,7 +832,7 @@ class ObjectQueryType<
 
   _objectField<
     K extends Extract<keyof ObjectFields, string>,
-    SubquerySchema extends Record<string, { query: AnyQueryType; paramInputs: Record<string, AnyInputValueType> }>,
+    SubquerySchema extends Record<string, { query: AnyQueryType; paramInputs: Record<string, AnyParamInputType> }>,
     Subquery extends ObjectQueryTypeOf<ObjectFields[K]['type'], Variables, SubquerySchema>
   >(key: K, makeSubquery: (subquery: ObjectQueryTypeOf<ObjectFields[K]['type'], Variables>) => Subquery) {
     const schema = this.resolverType.schema as ObjectFields
@@ -812,7 +861,7 @@ class ObjectQueryType<
 
   _objectListField<
     K extends Extract<keyof ObjectListFields, string>,
-    SubquerySchema extends Record<string, { query: AnyQueryType; paramInputs: Record<string, AnyInputValueType> }>,
+    SubquerySchema extends Record<string, { query: AnyQueryType; paramInputs: Record<string, AnyParamInputType> }>,
     Subquery extends ObjectQueryTypeOf<ObjectListFields[K]['type'][0], Variables, SubquerySchema>
   >(key: K, makeSubquery: (subquery: ObjectQueryTypeOf<ObjectListFields[K]['type'][0], Variables>) => Subquery) {
     const schema = this.resolverType.schema as ObjectListFields
@@ -841,7 +890,7 @@ class ObjectQueryType<
 
   paramField<
     K extends Extract<keyof ObjectListFields, string>,
-    Params extends FieldParams<ObjectListFields[K]>,
+    Params extends VariableFieldParams<ObjectListFields[K], Variables>,
     SubquerySchema extends Record<string, { query: AnyQueryType; paramInputs: Record<never, any> }>,
     Subquery extends ObjectQueryTypeOf<ObjectListFields[K]['type'][0], Variables, SubquerySchema>
   >(
@@ -990,8 +1039,19 @@ class ObjectQueryType<
   }
 }
 
+class VariableInput<Name extends string> {
+  name: Name
+  constructor(name: Name) {
+    this.name = name
+  }
+}
+
 function queryType() {
   return new ObjectQueryType(Query, {}, {})
+}
+
+function variable<Name extends string>(name: Name) {
+  return new VariableInput(name)
 }
 
 function generateQueryString<Q extends AnyObjectQueryType>(queryType: Q): string {
@@ -1015,7 +1075,7 @@ function generateQueryVariableString<Q extends AnyObjectQueryType>(queryType: Q)
   ].join('')
 }
 
-function generateQueryFieldParamInputStringPart<P extends Record<string, AnyInputValueType>>(paramInputs: P): string {
+function generateQueryFieldParamInputStringPart<P extends Record<string, AnyParamInputType>>(paramInputs: P): string {
   const paramInputEntries = Object.entries(paramInputs)
   if (paramInputEntries.length === 0) {
     return ''
@@ -1112,8 +1172,8 @@ type k = typeof AnyUser['types'][0]['typename']
 
 try {
   const ListCatchups = queryType()
-    .variable('x', 'Int')
-    .paramField('recentCatchups', { 'limit': 10 }, (catchup) =>
+    .variable('limit', 'Int')
+    .paramField('recentCatchups', { 'limit': variable('limit') }, (catchup) =>
       catchup
         .field('id')
         .field('name')
@@ -1156,6 +1216,49 @@ try {
   // queryData.recentCatchups[0]?.name
   queryData.recentCatchups[0]?.attendees[0]?.access_level
   queryData.recentCatchups[0]?.attendees[0]?.maybe_access_level
+} catch (err) {
+  console.error('err:', err)
+}
+
+try {
+  const SearchCatchups = queryType()
+    .variable('s', 'String')
+    .optionalVariable('lim', 'Int')
+    .paramField('searchCatchups', { 'name': variable('s'), 'limit': variable('lim') }, (catchup) =>
+      catchup.field('id').field('name')
+    )
+  // .field('searchCatchups', (catchup) => catchup.field('id').field('name'))
+
+  const TestQ = queryType()
+  const TestQ1var = TestQ.variable('s', 'String')
+  type Vars1 = typeof TestQ1var['variables']
+  const TestQ2var = TestQ1var.variable('lim', 'Int')
+  type Vars2 = typeof TestQ2var['variables']
+
+  type searchFieldParams = typeof Query.schema['searchCatchups']
+  type searchFieldParams2 = ParamValues<typeof Query.schema['searchCatchups']['params']>
+  type searchVariables = typeof SearchCatchups.variables
+  type searchParams = VariableFieldParams<searchFieldParams, searchVariables>
+  type sVarType = VariableValues<searchVariables>
+  type nameParamType = ParamValues<searchFieldParams['params']>['name']
+  type limitParamType = ParamValues<searchFieldParams['params']>['limit']
+  type nameInputs = {
+    [V in Extract<
+      keyof VariableValues<searchVariables>,
+      string
+    >]: VariableValues<searchVariables>[V] extends nameParamType ? VariableInput<V> : never
+  }
+  type limitInputs = {
+    [V in Extract<
+      keyof VariableValues<searchVariables>,
+      string
+    >]: VariableValues<searchVariables>[V] extends limitParamType ? VariableInput<V> : never
+  }
+  type searchParamVars = ParamVariables<ParamValues<searchFieldParams['params']>['name'], searchVariables>
+
+  const searchCatchupsData = useQuery(SearchCatchups).data
+  type KK = keyof typeof searchCatchupsData
+  // searchCatchupsData.searchCatchups[0]?.name
 } catch (err) {
   console.error('err:', err)
 }
