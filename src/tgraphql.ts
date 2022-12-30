@@ -192,6 +192,8 @@ const Query = objectType('Query')
 
 type SearchQueryParams = typeof Query.schema.searchCatchups.params
 
+const Mutation = objectType('Mutation').field('increase', 'Int')
+
 type AnyType =
   | ObjectType<string, Record<string, { type: AnyType; optional: boolean; params: AnyParamObjectType | null }>>
   | EnumType<string, ReadonlyArray<string>>
@@ -1086,8 +1088,8 @@ function variable<Name extends string>(name: Name) {
   return new VariableInput(name)
 }
 
-function generateQueryString<Q extends AnyObjectQueryType>(queryType: Q): string {
-  return ['query', generateQueryVariableString(queryType), generateQueryStringPart(queryType)].filter(Boolean).join(' ')
+function generateQueryString<Q extends AnyObjectQueryType>(queryType: Q, op: 'query' | 'mutation'): string {
+  return [op, generateQueryVariableString(queryType), generateQueryStringPart(queryType)].filter(Boolean).join(' ')
 }
 
 function generateQueryVariableString<Q extends AnyObjectQueryType>(queryType: Q): string {
@@ -1183,7 +1185,7 @@ type QueryResult<Q extends AnyQueryType> = Q extends [infer T extends AnyObjectQ
   : never
 
 function useQuery<Q extends AnyObjectQueryType>(queryType: Q): { data: QueryResult<Q> } {
-  const gql = generateQueryString(queryType)
+  const gql = generateQueryString(queryType, 'query')
   console.log(gql)
   return { data: {} } as any
 }
@@ -1208,6 +1210,7 @@ type k = typeof AnyUser['types'][0]['typename']
 try {
   const ListCatchups = queryType()
     .variable('limit', 'Int')
+    // .field('recentCatchups', (catchup) =>
     .paramField('recentCatchups', { 'limit': variable('limit') }, (catchup) =>
       catchup
         .field('id')
@@ -1244,10 +1247,12 @@ try {
   type NestedVars = typeof nestedQ['variables']
 
   const queryData = useQuery(ListCatchups).data
+  type KK1 = keyof typeof queryData
   queryData.recentCatchups[0]?.attendees[0]?.user.name
   const u = queryData.recentCatchups[0]?.attendees[0]?.user
   queryData.recentCatchups[0]?.attendees[0]?.maybe_user
   const j = u && 'joined_at' in u ? u.joined_at : 0
+  const origName = u && 'origin_user' in u ? u.origin_user.name : 0
   // queryData.recentCatchups[0]?.name
   queryData.recentCatchups[0]?.attendees[0]?.access_level
   queryData.recentCatchups[0]?.attendees[0]?.maybe_access_level
@@ -1297,3 +1302,16 @@ try {
 } catch (err) {
   console.error('err:', err)
 }
+
+function mutationType() {
+  return new ObjectQueryType(Mutation, {}, {})
+}
+
+function useMutation<M extends AnyObjectQueryType>(mutationType: M): { data: QueryResult<M> } {
+  const gql = generateQueryString(mutationType, 'mutation')
+  console.log(gql)
+  return { data: {} } as any
+}
+
+const Increase = mutationType().field('increase')
+const increaseData = useMutation(Increase).data
