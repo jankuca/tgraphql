@@ -1,3 +1,5 @@
+import assertNever from 'assert-never'
+
 type ScalarType = 'ID' | 'String' | 'Int' | 'Float' | 'Bool'
 
 abstract class NamedType<Name extends string> {
@@ -147,7 +149,7 @@ type AnyParamObjectType = ParamObjectType<Record<string, ParamDescriptor<{ type:
 
 type AnyInputValueType = ScalarType | EnumValueType<string>
 
-type AnyParamInputType = AnyInputValueType | VariableInput<string>
+type AnyParamInputType = string | number | boolean | EnumValueType<string> | VariableInput<string>
 
 function objectType<Name extends string>(typename: Name) {
   return new ObjectType(typename, {})
@@ -448,6 +450,30 @@ function generateSchemaPart(type: AnyType | AnyInputValueType | AnyParamType): {
   }
 
   return { hoisted: {}, inline: type }
+}
+
+function generateParamInputString(type: AnyParamInputType): string {
+  if (type instanceof EnumValueType) {
+    return type.value
+  }
+
+  if (type instanceof VariableInput) {
+    return `$${type.name}`
+  }
+
+  if (typeof type === 'string') {
+    return `"${String(type).replace(/"/g, '\\"')}"`
+  }
+
+  if (typeof type === 'number') {
+    return String(type)
+  }
+
+  if (typeof type === 'boolean') {
+    return String(type)
+  }
+
+  assertNever(type)
 }
 
 // createResolvers()
@@ -1086,7 +1112,7 @@ function generateQueryFieldParamInputStringPart<P extends Record<string, AnyPara
     paramInputEntries
       .map(
         ([key, fieldDesc]) =>
-          `${key}: ${fieldDesc instanceof VariableInput ? `$${fieldDesc.name}` : generateSchemaPart(fieldDesc).inline}`
+          `${key}: ${fieldDesc instanceof VariableInput ? `$${fieldDesc.name}` : generateParamInputString(fieldDesc)}`
       )
       .join(', '),
     ')',
