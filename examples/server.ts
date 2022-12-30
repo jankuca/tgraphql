@@ -64,7 +64,7 @@ type AttendeeModel = {
 }
 type UserModel = { 'id': string; 'name': string }
 
-function listRecentCatchups() {
+function listRecentCatchups(params?: { limit?: number }) {
   const catchupModels: Array<CatchupModel> = [{ 'id': 'c1', 'name': 'Catchup 1' }]
   const attendeeModels: Array<Omit<AttendeeModel, 'catchup_id'> & { 'user_name': UserModel['name'] }> = [
     { 'id': 'a1', 'user_id': 'u1', 'access_level': 'owner', 'user_name': 'User 1' },
@@ -73,28 +73,40 @@ function listRecentCatchups() {
 
   const authorAttendee = attendeeModels.find((attendeeModel) => attendeeModel['access_level'] === 'owner')
 
-  return catchupModels.map((catchupModel) => ({
-    ...catchupModel,
-    'author': authorAttendee
-      ? { 'id': authorAttendee['user_id'], 'name': authorAttendee['user_name'], 'joined_at': '2022-10-10' }
-      : { 'id': 'author-id', 'name': 'Author', 'joined_at': '2022-10-10' },
-    'attendees': attendeeModels.map((attendeeModel) => {
-      const { 'user_id': userId, 'user_name': userName, ...attendee } = attendeeModel
-      return {
-        ...attendee,
-        'maybe_user': null,
-        'maybe_access_level': null,
-        'user': { 'id': userId, 'name': userName, 'joined_at': '2022-10-10' },
-      }
-    }),
-  }))
+  return catchupModels
+    .map((catchupModel) => ({
+      ...catchupModel,
+      'author': authorAttendee
+        ? { 'id': authorAttendee['user_id'], 'name': authorAttendee['user_name'], 'joined_at': '2022-10-10' }
+        : { 'id': 'author-id', 'name': 'Author', 'joined_at': '2022-10-10' },
+      'attendees': attendeeModels.map((attendeeModel) => {
+        const { 'user_id': userId, 'user_name': userName, ...attendee } = attendeeModel
+        return {
+          ...attendee,
+          'maybe_user': null,
+          'maybe_access_level': null,
+          'user': { 'id': userId, 'name': userName, 'joined_at': '2022-10-10' },
+        }
+      }),
+    }))
+    .slice(0, params?.limit ?? Infinity)
 }
 
-export function createResolvers(): SchemaResolvers<typeof Query> {
+export function createResolvers(): SchemaResolvers<typeof Query, typeof Mutation, typeof Subscription> {
   return {
     Query: {
       recentCatchups: listRecentCatchups,
       searchCatchups: listRecentCatchups,
+    },
+    Mutation: {
+      increase: () => 1,
+      increaseBy: (params) => 2 + params.by,
+      addCatchup: () => listRecentCatchups()[0],
+      addCatchupAttendee: () => listRecentCatchups()[0]['attendees'][0],
+    },
+    Subscription: {
+      notification: () => ({ id: 'notification-id', message: 'Hello World!' }),
+      notifications: (params) => [{ id: 'notification-id', message: 'Hello World!' }],
     },
   }
 }
