@@ -86,6 +86,57 @@ class ObjectType<
   }
 }
 
+class InputObjectType<
+  Name extends string,
+  S extends Record<string, { type: AnyInputFieldType; optional: boolean }>
+> extends NamedType<Name> {
+  schema: S
+  constructor(typename: Name, schema: S) {
+    super(typename)
+    this.schema = schema
+  }
+
+  field<K extends string, T extends AnyInputFieldType>(
+    key: K,
+    type: T
+  ): InputObjectType<Name, S & { [k in K]: { type: T; optional: false } }> {
+    return new InputObjectType(this.typename, {
+      ...this.schema,
+      [key]: { type, optional: false },
+    })
+  }
+
+  optionalField<K extends string, T extends AnyInputFieldType>(
+    key: K,
+    type: T
+  ): InputObjectType<Name, S & { [k in K]: { type: T; optional: true } }> {
+    return new InputObjectType(this.typename, {
+      ...this.schema,
+      [key]: { type, optional: true },
+    })
+  }
+
+  listField<K extends string, Ts extends [AnyInputFieldType] | [AnyInputFieldType, null]>(
+    key: K,
+    itemTypes: Ts
+  ): InputObjectType<Name, S & { [k in K]: { type: Ts; optional: false } }> {
+    return new InputObjectType(this.typename, {
+      ...this.schema,
+      [key]: { type: itemTypes, optional: false },
+    })
+  }
+
+  optionalListField<K extends string, Ts extends [AnyInputFieldType] | [AnyInputFieldType, null]>(
+    key: K,
+    itemTypes: Ts
+  ): InputObjectType<Name, S & { [k in K]: { type: Ts; optional: true } }> {
+    return new InputObjectType(this.typename, {
+      ...this.schema,
+      [key]: { type: itemTypes, optional: true },
+    })
+  }
+}
+
 class ParamObjectType<S extends Record<string, ParamDescriptor<{ type: AnyParamType; optional: boolean }>>> {
   schema: S
   constructor(schema: S) {
@@ -158,12 +209,32 @@ class UnionType<Name extends string, Ts extends ReadonlyArray<AnyObjectType>> ex
 
 type AnyParamObjectType = ParamObjectType<Record<string, ParamDescriptor<{ type: AnyParamType; optional: boolean }>>>
 
-type AnyInputValueType = ScalarType | EnumValueType<string>
+type AnyInputFieldType =
+  | ScalarType
+  | EnumType<string, ReadonlyArray<string>>
+  | EnumValueType<string>
+  | InputObjectType<string, Record<string, { type: AnyInputFieldType; optional: boolean }>>
+  | [AnyInputFieldType]
+  | [AnyInputFieldType, null]
 
-type AnyParamInputType = string | number | boolean | EnumValueType<string> | VariableInput<string>
+type AnyInputValueType =
+  | ScalarType
+  | EnumValueType<string>
+  | InputObjectType<string, Record<string, { type: AnyInputFieldType; optional: boolean }>>
+
+type AnyParamInputType =
+  | string
+  | number
+  | boolean
+  | EnumValueType<string>
+  | VariableInput<string>
+  | InputObjectType<string, Record<string, { type: AnyInputFieldType; optional: boolean }>>
 
 function objectType<Name extends string>(typename: Name) {
   return new ObjectType(typename, {})
+}
+function inputType<Name extends string>(typename: Name) {
+  return new InputObjectType(typename, {})
 }
 function enumType<Name extends string, S extends ReadonlyArray<string>>(typename: Name, ...values: S) {
   return new EnumType(typename, values)
@@ -203,9 +274,24 @@ const Query = objectType('Query')
 
 type SearchQueryParams = typeof Query.schema.searchCatchups.params
 
+const AddAttendeeInput = inputType('AddAttendeeInput')
+  .field('access_level', CatchupAccessLevelEnum)
+  .field('user_id', 'ID')
+const AddAttendeeBatchInput = inputType('AddAttendeeBatchInput').listField('attendees', [AddAttendeeInput])
+
 const Mutation = objectType('Mutation')
   .field('increase', 'Int')
   .paramField('increaseBy', (params) => params.field('by', 'Int'), 'Int')
+  .paramField(
+    'addCatchup',
+    (params) => params.optionalField('name', 'String', 'Yannis').field('attendees', AddAttendeeBatchInput),
+    Catchup
+  )
+  .paramField(
+    'addCatchupAttendee',
+    (params) => params.field('catchup_id', 'ID').field('attendee', AddAttendeeInput),
+    Attendee
+  )
 
 const Notification = objectType('Notification').field('id', 'ID').field('message', 'String')
 
@@ -228,6 +314,10 @@ type ObjectValue<S extends Record<string, { type: AnyType; optional: boolean; pa
   [key in keyof S]: S[key]['optional'] extends true ? Value<S[key]['type']> | null : Value<S[key]['type']>
 }
 
+type InputObjectValue<S extends Record<string, { type: AnyInputFieldType; optional: boolean }>> = {
+  [key in keyof S]: S[key]['optional'] extends true ? InputValue<S[key]['type']> | null : InputValue<S[key]['type']>
+}
+
 type Value<T extends AnyType> = T extends [infer I extends AnyType, null]
   ? Array<Value<I>>
   : T extends [infer I extends AnyType]
@@ -238,6 +328,8 @@ type Value<T extends AnyType> = T extends [infer I extends AnyType, null]
   ? Value<I[number]>
   : T extends EnumValueType<infer I>
   ? I
+  : T extends InputObjectType<string, infer I>
+  ? InputObjectValue<I>
   : T extends ObjectType<string, infer I>
   ? ObjectValue<I>
   : T extends 'Int'
@@ -248,7 +340,9 @@ type Value<T extends AnyType> = T extends [infer I extends AnyType, null]
   ? string
   : T
 
-type InputValue<T extends AnyInputValueType> = T extends EnumValueType<infer I>
+type InputValue<T extends AnyInputValueType | AnyInputFieldType> = T extends EnumType<string, infer I>
+  ? I[number]
+  : T extends EnumValueType<infer I>
   ? I
   : T extends 'Int'
   ? number
@@ -278,7 +372,12 @@ type VariableDescriptor<T extends { type: AnyInputValueType; optional: boolean }
   defaultValue: true extends T['optional'] ? any : InputValue<T['type']>
 }
 
-type AnyParamType = ScalarType | EnumValueType<string> | [AnyParamType] | [AnyParamType, null]
+type AnyParamType =
+  | ScalarType
+  | EnumValueType<string>
+  | InputObjectType<string, Record<string, { type: AnyInputFieldType; optional: boolean }>>
+  | [AnyParamType]
+  | [AnyParamType, null]
 
 type ParamDescriptor<T extends { type: AnyParamType; optional: boolean }> = {
   type: T['type']
@@ -404,7 +503,7 @@ function generateSchemaFieldParamStringPart<P extends AnyParamObjectType>(params
   ].join('')
 }
 
-function generateSchemaPart(type: AnyType | AnyInputValueType | AnyParamType): {
+function generateSchemaPart(type: AnyType | AnyInputValueType | AnyInputFieldType | AnyParamType): {
   hoisted: Record<string, string>
   inline: string
 } {
@@ -464,6 +563,21 @@ function generateSchemaPart(type: AnyType | AnyInputValueType | AnyParamType): {
     return { hoisted, inline: type.typename }
   }
 
+  if (type instanceof InputObjectType) {
+    const hoisted: Record<string, string> = {}
+    const schemaStringParts: Array<string> = [`input ${type.typename} {`]
+
+    Object.entries(type.schema).forEach(([key, fieldDesc]) => {
+      const { hoisted: hoistedParts, inline } = generateSchemaPart(fieldDesc.type)
+      Object.assign(hoisted, hoistedParts)
+      schemaStringParts.push(`  ${key}: ${inline}${fieldDesc.optional ? '' : '!'}`)
+    })
+    schemaStringParts.push('}')
+    hoisted[type.typename] = schemaStringParts.join('\n')
+
+    return { hoisted, inline: type.typename }
+  }
+
   // ScalarType
   if (type === 'String' || type === 'Int' || type === 'Float' || type === 'Bool' || type === 'ID') {
     return { hoisted: {}, inline: type }
@@ -480,7 +594,7 @@ function generateSchemaPart(type: AnyType | AnyInputValueType | AnyParamType): {
 }
 
 function generateParamInputString(type: AnyParamInputType): string {
-  if (type instanceof EnumValueType) {
+  if (type instanceof EnumValueType || type instanceof InputObjectType) {
     return generateSchemaPart(type).inline
   }
 
@@ -1403,6 +1517,28 @@ function useSubscription<M extends AnyObjectQueryType>(subscriptionType: M): { d
   console.log(gql)
   return { data: {} } as any
 }
+
+const AddCatchupMutation = mutationType()
+  .optionalVariable('name', 'String', 'Jan')
+  .variable('attendees', AddAttendeeBatchInput)
+  .paramField('addCatchup', { 'name': variable('name'), 'attendees': variable('attendees') }, (catchup) =>
+    catchup.field('id').field('name')
+  )
+const addCatchupMutationData = useMutation(AddCatchupMutation).data
+
+const AddCatchupAttendeeMutation = mutationType()
+  .variable('catchup_id', 'ID')
+  .variable('attendee', AddAttendeeInput)
+  .paramField(
+    'addCatchupAttendee',
+    { 'catchup_id': variable('catchup_id'), 'attendee': variable('attendee') },
+    (attendee) =>
+      attendee.field('id').field('user', {
+        'User': (user) => user.field('id').field('name'),
+        'PseudoUser': (user) => user.field('id').field('name'),
+      })
+  )
+const addCatchupAttendeeMutationData = useMutation(AddCatchupAttendeeMutation).data
 
 const Increase = mutationType().field('increase')
 const increaseData = useMutation(Increase).data
