@@ -230,74 +230,18 @@ type AnyParamInputType =
   | VariableInput<string>
   | InputObjectType<string, Record<string, { type: AnyInputFieldType; optional: boolean }>>
 
-function objectType<Name extends string>(typename: Name) {
+export function objectType<Name extends string>(typename: Name) {
   return new ObjectType(typename, {})
 }
-function inputType<Name extends string>(typename: Name) {
+export function inputType<Name extends string>(typename: Name) {
   return new InputObjectType(typename, {})
 }
-function enumType<Name extends string, S extends ReadonlyArray<string>>(typename: Name, ...values: S) {
+export function enumType<Name extends string, S extends ReadonlyArray<string>>(typename: Name, ...values: S) {
   return new EnumType(typename, values)
 }
-function unionType<Name extends string, S extends ReadonlyArray<AnyObjectType>>(typename: Name, ...values: S) {
+export function unionType<Name extends string, S extends ReadonlyArray<AnyObjectType>>(typename: Name, ...values: S) {
   return new UnionType(typename, values)
 }
-
-const CatchupAccessLevelEnum = enumType('CatchupAccessLevelEnum', 'owner', 'participant', 'viewer', 'denied')
-
-const User = objectType('User').field('id', 'ID').field('name', 'String').field('joined_at', 'String')
-
-const PseudoUser = objectType('PseudoUser').field('id', 'ID').field('name', 'String').field('origin_user', User)
-
-const AnyUser = unionType('AnyUser', User, PseudoUser)
-
-const Attendee = objectType('Attendee')
-  .field('id', 'ID')
-  .field('user', AnyUser)
-  .optionalField('maybe_user', AnyUser)
-  .field('access_level', CatchupAccessLevelEnum)
-  .optionalField('maybe_access_level', CatchupAccessLevelEnum)
-
-const Catchup = objectType('Catchup')
-  .field('id', 'ID')
-  .optionalField('name', 'String')
-  .optionalField('author', User)
-  .listField('attendees', [Attendee])
-
-const Query = objectType('Query')
-  .listField('recentCatchups', [Catchup])
-  .listParamField(
-    'searchCatchups',
-    (params) => params.field('limit', 'Int').optionalField('page', 'Int', 1).optionalField('name', 'String', ''),
-    [Catchup]
-  )
-
-type SearchQueryParams = typeof Query.schema.searchCatchups.params
-
-const AddAttendeeInput = inputType('AddAttendeeInput')
-  .field('access_level', CatchupAccessLevelEnum)
-  .field('user_id', 'ID')
-const AddAttendeeBatchInput = inputType('AddAttendeeBatchInput').listField('attendees', [AddAttendeeInput])
-
-const Mutation = objectType('Mutation')
-  .field('increase', 'Int')
-  .paramField('increaseBy', (params) => params.field('by', 'Int'), 'Int')
-  .paramField(
-    'addCatchup',
-    (params) => params.optionalField('name', 'String', 'Yannis').field('attendees', AddAttendeeBatchInput),
-    Catchup
-  )
-  .paramField(
-    'addCatchupAttendee',
-    (params) => params.field('catchup_id', 'ID').field('attendee', AddAttendeeInput),
-    Attendee
-  )
-
-const Notification = objectType('Notification').field('id', 'ID').field('message', 'String')
-
-const Subscription = objectType('Subscription')
-  .field('notification', Notification)
-  .listParamField('notifications', (params) => params.optionalField('limit', 'Int', 3), [Notification])
 
 type AnyType =
   | ObjectType<string, Record<string, { type: AnyType; optional: boolean; params: AnyParamObjectType | null }>>
@@ -401,14 +345,6 @@ type ParamValues<P extends AnyParamObjectType> = P extends ParamObjectType<infer
     }
   : never
 
-// Testing:
-// type U = Value<typeof User>
-// type A = Value<typeof Attendee>
-// type C = Value<typeof Catchup>
-// type Cs = Value<[typeof Catchup]>
-// type E = Value<typeof CatchupAccessLevelEnum>
-// type OA = ObjectValue<typeof Attendee['schema']>
-
 type Resolver<T extends AnyType> = T extends [infer I extends AnyType, null]
   ? () => Array<Value<I> | null>
   : T extends [infer I extends AnyType]
@@ -425,60 +361,9 @@ type Resolver<T extends AnyType> = T extends [infer I extends AnyType, null]
   ? () => string
   : T
 
-// Testing:
-// type URs = Resolver<typeof User>
-// type ARs = Resolver<typeof Attendee>
-// type CRs = Resolver<typeof Catchup>
+export type SchemaResolvers<Q extends ObjectType<'Query', any>> = { Query: Resolver<Q> }
 
-type SchemaResolvers<Q extends ObjectType<'Query', any>> = { Query: Resolver<Q> }
-
-// --- DEMO: ---
-
-type CatchupModel = { 'id': string; 'name': string | null }
-type AttendeeModel = {
-  'id': string
-  'catchup_id': string
-  'user_id': string
-  'access_level': 'owner' | 'participant' | 'viewer'
-}
-type UserModel = { 'id': string; 'name': string }
-
-function listRecentCatchups(): Value<[typeof Catchup]> {
-  const catchupModels: Array<CatchupModel> = [{ 'id': 'c1', 'name': 'Catchup 1' }]
-  const attendeeModels: Array<Omit<AttendeeModel, 'catchup_id'> & { 'user_name': UserModel['name'] }> = [
-    { 'id': 'a1', 'user_id': 'u1', 'access_level': 'owner', 'user_name': 'User 1' },
-    { 'id': 'a2', 'user_id': 'u2', 'access_level': 'viewer', 'user_name': 'User 2' },
-  ]
-
-  const authorAttendee = attendeeModels.find((attendeeModel) => attendeeModel['access_level'] === 'owner')
-
-  return catchupModels.map((catchupModel) => ({
-    ...catchupModel,
-    'author': authorAttendee
-      ? { 'id': authorAttendee['user_id'], 'name': authorAttendee['user_name'], 'joined_at': '2022-10-10' }
-      : { 'id': 'author-id', 'name': 'Author', 'joined_at': '2022-10-10' },
-    'attendees': attendeeModels.map((attendeeModel) => {
-      const { 'user_id': userId, 'user_name': userName, ...attendee } = attendeeModel
-      return {
-        ...attendee,
-        'maybe_user': null,
-        'maybe_access_level': null,
-        'user': { 'id': userId, 'name': userName, 'joined_at': '2022-10-10' },
-      }
-    }),
-  }))
-}
-
-function createResolvers(): SchemaResolvers<typeof Query> {
-  return {
-    Query: {
-      recentCatchups: listRecentCatchups,
-      searchCatchups: listRecentCatchups,
-    },
-  }
-}
-
-function generateSchemaString(rootType: AnyType): string {
+export function generateSchemaString(rootType: AnyType): string {
   const { hoisted } = generateSchemaPart(rootType)
   return Object.values(hoisted).join('\n\n')
 }
@@ -616,9 +501,6 @@ function generateParamInputString(type: AnyParamInputType): string {
 
   assertNever(type)
 }
-
-// createResolvers()
-console.log(generateSchemaString(Query))
 
 // Queries
 
@@ -1272,15 +1154,15 @@ class VariableInput<Name extends string> {
   }
 }
 
-function queryType() {
-  return new ObjectQueryType(Query, {}, {})
+export function queryType<Query extends AnyObjectType>(query: Query) {
+  return new ObjectQueryType(query, {}, {})
 }
 
-function variable<Name extends string>(name: Name) {
+export function variable<Name extends string>(name: Name) {
   return new VariableInput(name)
 }
 
-function generateQueryString<Q extends AnyObjectQueryType>(
+export function generateQueryString<Q extends AnyObjectQueryType>(
   queryType: Q,
   op: 'query' | 'mutation' | 'subscription'
 ): string {
@@ -1357,7 +1239,7 @@ function generateQueryStringPart<Q extends AnyQueryType>(queryType: Q): string {
   throw new Error('Unknown query')
 }
 
-type QueryResult<Q extends AnyQueryType> = Q extends [infer T extends AnyObjectQueryType]
+export type QueryResult<Q extends AnyQueryType> = Q extends [infer T extends AnyObjectQueryType]
   ? Array<QueryResult<T>>
   : Q extends [infer T extends AnyUnionQueryType]
   ? Array<QueryResult<T>>
@@ -1379,181 +1261,28 @@ type QueryResult<Q extends AnyQueryType> = Q extends [infer T extends AnyObjectQ
   ? Value<T>
   : never
 
-function useQuery<Q extends AnyObjectQueryType>(queryType: Q): { data: QueryResult<Q> } {
+export function useQuery<Q extends AnyObjectQueryType>(queryType: Q): { data: QueryResult<Q> } {
   const gql = generateQueryString(queryType, 'query')
   console.log(gql)
   return { data: {} } as any
 }
 
-// --- DEMO: ---
-
-const q = new ObjectQueryType(Catchup, {}, {})
-type QFields = keyof ScalarResolvers<typeof q.resolverType>
-type QObjectLists = keyof ObjectListResolvers<typeof q.resolverType>
-
-// new ObjectQueryType(Query, {}).field('x')
-// new ObjectQueryType(Query, {}).objectField('recentCatchups', (catchup) => catchup.field('id'))
-// new ObjectQueryType(Query, {}).listField('recentCatchups')
-new ObjectQueryType(Query, {}, {}).field('recentCatchups', (catchup) => catchup.field('id'))
-
-type X = UnionResolvers<typeof Attendee>
-type Y = ObjectListResolvers<typeof Catchup>
-type Z = keyof ScalarResolvers<typeof Attendee>
-type names = UnionTypeNames<typeof AnyUser>
-type k = typeof AnyUser['types'][0]['typename']
-
-try {
-  const ListCatchups = queryType()
-    .variable('limit', 'Int')
-    // .field('recentCatchups', (catchup) =>
-    .listParamField('recentCatchups', { 'limit': variable('limit') }, (catchup) =>
-      catchup
-        .field('id')
-        .field('name')
-        .field('author', (author) => author.field('name'))
-        // .field('attendees', (attendee) =>
-        //   attendee.field('access_level').field('user', (user) => user.field('id').field('name'))
-        // )
-        .field('attendees', (attendee) =>
-          attendee
-            .field('access_level')
-            .field('user', {
-              'User': (user) => user.field('id').field('name').field('joined_at'),
-              'PseudoUser': (user) =>
-                user
-                  .field('id')
-                  .field('name')
-                  .field('origin_user', (originUser) => originUser.field('id').field('name')),
-            })
-            .field('maybe_access_level')
-            .field('maybe_user', {
-              'User': (user) => user.field('id').field('name').field('joined_at'),
-              'PseudoUser': (user) =>
-                user
-                  .field('id')
-                  .field('name')
-                  .field('origin_user', (originUser) => originUser.field('id').field('name')),
-            })
-        )
-    )
-
-  type Vars = typeof ListCatchups['variables']
-  const nestedQ = ListCatchups.schema.recentCatchups.query[0].schema.attendees.query[0]
-  type NestedVars = typeof nestedQ['variables']
-
-  const queryData = useQuery(ListCatchups).data
-  type KK1 = keyof typeof queryData
-  queryData.recentCatchups[0]?.attendees[0]?.user.name
-  const u = queryData.recentCatchups[0]?.attendees[0]?.user
-  queryData.recentCatchups[0]?.attendees[0]?.maybe_user
-  const j = u && 'joined_at' in u ? u.joined_at : 0
-  const origName = u && 'origin_user' in u ? u.origin_user.name : 0
-  // queryData.recentCatchups[0]?.name
-  queryData.recentCatchups[0]?.attendees[0]?.access_level
-  queryData.recentCatchups[0]?.attendees[0]?.maybe_access_level
-} catch (err) {
-  console.error('err:', err)
+export function mutationType<Mutation extends AnyObjectType>(mutation: Mutation) {
+  return new ObjectQueryType(mutation, {}, {})
 }
 
-try {
-  const SearchCatchups = queryType()
-    .variable('s', 'String')
-    .optionalVariable('lim', 'Int', 5)
-    .listParamField('searchCatchups', { 'name': variable('s'), 'limit': variable('lim') }, (catchup) =>
-      catchup.field('id').field('name')
-    )
-  // .field('searchCatchups', (catchup) => catchup.field('id').field('name'))
-
-  const TestQ = queryType()
-  const TestQ1var = TestQ.variable('s', 'String')
-  type Vars1 = typeof TestQ1var['variables']
-  const TestQ2var = TestQ1var.variable('lim', 'Int')
-  type Vars2 = typeof TestQ2var['variables']
-
-  type searchFieldParams = typeof Query.schema['searchCatchups']
-  type searchFieldParams2 = ParamValues<typeof Query.schema['searchCatchups']['params']>
-  type searchVariables = typeof SearchCatchups.variables
-  type searchParams = VariableFieldParams<searchFieldParams, searchVariables>
-  type sVarType = VariableValues<searchVariables>
-  type nameParamType = ParamValues<searchFieldParams['params']>['name']
-  type limitParamType = ParamValues<searchFieldParams['params']>['limit']
-  type nameInputs = {
-    [V in Extract<
-      keyof VariableValues<searchVariables>,
-      string
-    >]: VariableValues<searchVariables>[V] extends nameParamType ? VariableInput<V> : never
-  }
-  type limitInputs = {
-    [V in Extract<
-      keyof VariableValues<searchVariables>,
-      string
-    >]: VariableValues<searchVariables>[V] extends limitParamType ? VariableInput<V> : never
-  }
-  type searchParamVars = ParamVariables<ParamValues<searchFieldParams['params']>['name'], searchVariables>
-
-  const searchCatchupsData = useQuery(SearchCatchups).data
-  type KK = keyof typeof searchCatchupsData
-  // searchCatchupsData.searchCatchups[0]?.name
-} catch (err) {
-  console.error('err:', err)
-}
-
-function mutationType() {
-  return new ObjectQueryType(Mutation, {}, {})
-}
-
-function useMutation<M extends AnyObjectQueryType>(mutationType: M): { data: QueryResult<M> } {
+export function useMutation<M extends AnyObjectQueryType>(mutationType: M): { data: QueryResult<M> } {
   const gql = generateQueryString(mutationType, 'mutation')
   console.log(gql)
   return { data: {} } as any
 }
 
-function subscriptionType() {
-  return new ObjectQueryType(Subscription, {}, {})
+export function subscriptionType<Subscription extends AnyObjectType>(subscription: Subscription) {
+  return new ObjectQueryType(subscription, {}, {})
 }
 
-function useSubscription<M extends AnyObjectQueryType>(subscriptionType: M): { data: QueryResult<M> } {
+export function useSubscription<M extends AnyObjectQueryType>(subscriptionType: M): { data: QueryResult<M> } {
   const gql = generateQueryString(subscriptionType, 'subscription')
   console.log(gql)
   return { data: {} } as any
 }
-
-const AddCatchupMutation = mutationType()
-  .optionalVariable('name', 'String', 'Jan')
-  .variable('attendees', AddAttendeeBatchInput)
-  .paramField('addCatchup', { 'name': variable('name'), 'attendees': variable('attendees') }, (catchup) =>
-    catchup.field('id').field('name')
-  )
-const addCatchupMutationData = useMutation(AddCatchupMutation).data
-
-const AddCatchupAttendeeMutation = mutationType()
-  .variable('catchup_id', 'ID')
-  .variable('attendee', AddAttendeeInput)
-  .paramField(
-    'addCatchupAttendee',
-    { 'catchup_id': variable('catchup_id'), 'attendee': variable('attendee') },
-    (attendee) =>
-      attendee.field('id').field('user', {
-        'User': (user) => user.field('id').field('name'),
-        'PseudoUser': (user) => user.field('id').field('name'),
-      })
-  )
-const addCatchupAttendeeMutationData = useMutation(AddCatchupAttendeeMutation).data
-
-const Increase = mutationType().field('increase')
-const increaseData = useMutation(Increase).data
-
-const IncreaseBy = mutationType().scalarParamField('increaseBy', { 'by': 2 })
-const increaseByData = useMutation(IncreaseBy).data
-
-const NotificationSubscription = subscriptionType().field('notification', (notification) =>
-  notification.field('message')
-)
-const notificationSubscriptionData = useSubscription(NotificationSubscription).data
-
-const NotificationListSubscription = subscriptionType().listParamField(
-  'notifications',
-  { 'limit': 2 },
-  (notification) => notification.field('message')
-)
-const notificationListSubscriptionData = useSubscription(NotificationListSubscription).data
