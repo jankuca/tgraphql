@@ -1,11 +1,11 @@
-# tGraphQL
+# t-GraphQL
 
 (typed GraphQL)
 
 End-to-end type-safe GraphQL for TypeScript. Think tRPC, but GraphQL.
 
 ```bash
-npm i --save tgraphql
+npm i --save t-graphql
 ```
 
 ## Movitation
@@ -35,7 +35,7 @@ const { data } = useQuery(GetProfile)
 
 ```typescript
 // server
-import { objectType } from 'tgraphql/server'
+import { objectType } from 't-graphql'
 
 const Tag = objectType('Tag').field('label', 'String')
 const Task = objectType('Task').field('id', 'ID').field('title', 'String').optionalListField('tags', Tag)
@@ -48,7 +48,7 @@ export const Query = objectType('Query')
 ### Define mutation schema
 
 ```typescript
-import { inputType, objectType, queryType } from 'tgraphql/server'
+import { inputType, objectType, queryType } from 't-graphql'
 
 export const TaskConfigInput = inputType('TaskConfigInput').listField('tags', ['String'])
 
@@ -60,7 +60,7 @@ export const Mutation = objectType('Mutation')
 ### Write type-safe resolvers
 
 ```typescript
-import { SchemaResovlers } from 'tgraphql'
+import { SchemaResovlers } from 't-graphql'
 
 const resolvers: SchemaResolvers<typeof Query, typeof Mutations> = {
   'Query': {
@@ -78,7 +78,7 @@ const resolvers: SchemaResolvers<typeof Query, typeof Mutations> = {
 
 ```typescript
 // client
-import { queryType, useQuery } from 'tgraphql'
+import { queryType, useQuery } from 't-graphql'
 import { Query } from './server'
 
 const ListTasks = queryType(Query).field('tasks', (task) =>
@@ -96,7 +96,7 @@ const { data } = useQuery(ListTasks)
 
 ```typescript
 // client
-import { mutationType, useMutation, variable } from 'tgraphql'
+import { mutationType, useMutation, variable } from 't-graphql'
 import { Mutation, TaskConfigInput } from './server'
 
 const AddTask = mutationType(Mutation)

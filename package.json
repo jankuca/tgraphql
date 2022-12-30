@@ -1,5 +1,5 @@
 {
-  "name": "tgraphql",
+  "name": "t-graphql",
   "version": "0.0.0",
   "scripts": {
     "build": "tsc -p tsconfig.json",
