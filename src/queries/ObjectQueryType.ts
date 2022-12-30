@@ -236,7 +236,7 @@ export class ObjectQueryType<
       : this._scalarField(key)
   }
 
-  _scalarField<K extends Extract<keyof Fields, string>>(key: K) {
+  private _scalarField<K extends Extract<keyof Fields, string>>(key: K) {
     const schema = this.resolverType.schema as Fields
     const fieldDesc = schema[key]
 
@@ -283,7 +283,7 @@ export class ObjectQueryType<
     return nextQueryType
   }
 
-  _scalarListField<K extends Extract<keyof ListFields, string>>(key: K) {
+  private _scalarListField<K extends Extract<keyof ListFields, string>>(key: K) {
     const schema = this.resolverType.schema as ListFields
     const fieldDesc = schema[key]
 
@@ -305,7 +305,7 @@ export class ObjectQueryType<
     return nextQueryType
   }
 
-  _objectField<
+  private _objectField<
     K extends Extract<keyof ObjectFields, string>,
     SubquerySchema extends Record<string, { query: AnyQueryType; paramInputs: Record<string, AnyParamInputType> }>,
     Subquery extends ObjectQueryTypeOf<ObjectFields[K]['type'], Variables, SubquerySchema>
@@ -334,7 +334,7 @@ export class ObjectQueryType<
     return nextQueryType
   }
 
-  _objectListField<
+  private _objectListField<
     K extends Extract<keyof ObjectListFields, string>,
     SubquerySchema extends Record<string, { query: AnyQueryType; paramInputs: Record<string, AnyParamInputType> }>,
     Subquery extends ObjectQueryTypeOf<ObjectListFields[K]['type'][0], Variables, SubquerySchema>
@@ -431,7 +431,7 @@ export class ObjectQueryType<
     return nextQueryType
   }
 
-  _unionField<
+  private _unionField<
     K extends Extract<keyof UnionFields, string>,
     Union extends UnionFields[K]['type'],
     SubqueryFactories extends UnionSubqueryFactories<Union, Variables>
@@ -476,7 +476,7 @@ export class ObjectQueryType<
     return nextQueryType
   }
 
-  _unionListField<
+  private _unionListField<
     K extends Extract<keyof UnionListFields, string>,
     Union extends UnionListFields[K]['type'][0],
     SubqueryFactories extends UnionSubqueryFactories<Union, Variables>
