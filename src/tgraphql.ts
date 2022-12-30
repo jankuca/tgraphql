@@ -68,9 +68,7 @@ const Attendee = objectType('Attendee')
   .field('user', User)
   .field('access_level', CatchupAccessLevelEnum)
 
-const Catchup = objectType('Catchup')
-  .field('id', 'ID')
-  .listField('attendees', [Attendee])
+const Catchup = objectType('Catchup').field('id', 'ID').field('author', User).listField('attendees', [Attendee])
 
 const Query = objectType('Query').listField('recentCatchups', [Catchup])
 
@@ -151,8 +149,13 @@ function listRecentCatchups(): Value<[typeof Catchup]> {
     { 'id': 'a2', 'user_id': 'u2', 'access_level': 'viewer', 'user_name': 'User 2' },
   ]
 
+  const authorAttendee = attendeeModels.find((attendeeModel) => attendeeModel['access_level'] === 'owner')
+
   return catchupModels.map((catchupModel) => ({
     ...catchupModel,
+    'author': authorAttendee
+      ? { 'id': authorAttendee['user_id'], 'name': authorAttendee['user_name'] }
+      : { 'id': 'author-id', 'name': 'Author' },
     'attendees': attendeeModels.map((attendeeModel) => {
       const { 'user_id': userId, 'user_name': userName, ...attendee } = attendeeModel
       return {
