@@ -29,6 +29,17 @@ class ObjectType<
     })
   }
 
+  paramField<K extends string, Params extends ParamObjectType<Record<string, any>>, T extends AnyType>(
+    key: K,
+    paramBuilder: (params: ParamObjectType<Record<never, any>>) => Params,
+    type: T
+  ): ObjectType<Name, S & { [k in K]: { type: T; optional: false; params: Params } }> {
+    return new ObjectType(this.typename, {
+      ...this.schema,
+      [key]: { type, optional: false, params: paramBuilder(new ParamObjectType({})) },
+    })
+  }
+
   optionalField<K extends string, T extends AnyType>(
     key: K,
     type: T
@@ -192,7 +203,9 @@ const Query = objectType('Query')
 
 type SearchQueryParams = typeof Query.schema.searchCatchups.params
 
-const Mutation = objectType('Mutation').field('increase', 'Int')
+const Mutation = objectType('Mutation')
+  .field('increase', 'Int')
+  .paramField('increaseBy', (params) => params.field('by', 'Int'), 'Int')
 
 type AnyType =
   | ObjectType<string, Record<string, { type: AnyType; optional: boolean; params: AnyParamObjectType | null }>>
@@ -842,6 +855,31 @@ class ObjectQueryType<
     return nextQueryType
   }
 
+  scalarParamField<K extends Extract<keyof Fields, string>, Params extends VariableFieldParams<Fields[K], Variables>>(
+    key: K,
+    paramInputs: Params
+  ) {
+    const schema = this.resolverType.schema as Fields
+    const fieldDesc = schema[key]
+
+    const nextQueryType: ObjectQueryTypeOf<
+      ResolverType,
+      Variables,
+      QuerySchema & {
+        [key in K]: { query: ScalarQueryType<Fields[K]['type']>; paramInputs: Params }
+      }
+    > = new ObjectQueryType(
+      this.resolverType,
+      {
+        ...this.schema,
+        [key]: { query: new ScalarQueryType(fieldDesc.type), paramInputs },
+      },
+      this.variables
+    )
+
+    return nextQueryType
+  }
+
   _scalarListField<K extends Extract<keyof ListFields, string>>(key: K) {
     const schema = this.resolverType.schema as ListFields
     const fieldDesc = schema[key]
@@ -1315,3 +1353,6 @@ function useMutation<M extends AnyObjectQueryType>(mutationType: M): { data: Que
 
 const Increase = mutationType().field('increase')
 const increaseData = useMutation(Increase).data
+
+const IncreaseBy = mutationType().scalarParamField('increaseBy', { 'by': 2 })
+const increaseByData = useMutation(IncreaseBy).data
