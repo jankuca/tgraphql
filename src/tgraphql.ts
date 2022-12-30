@@ -47,6 +47,21 @@ class ObjectType<
     })
   }
 
+  listParamField<
+    K extends string,
+    Params extends ParamObjectType<Record<string, any>>,
+    Ts extends [AnyType] | [AnyType, null]
+  >(
+    key: K,
+    paramBuilder: (params: ParamObjectType<Record<never, any>>) => Params,
+    itemTypes: Ts
+  ): ObjectType<Name, S & { [k in K]: { type: Ts; optional: false; params: Params } }> {
+    return new ObjectType(this.typename, {
+      ...this.schema,
+      [key]: { type: itemTypes, optional: false, params: paramBuilder(new ParamObjectType({})) },
+    })
+  }
+
   optionalListField<K extends string, Ts extends [AnyType] | [AnyType, null]>(
     key: K,
     itemTypes: Ts
@@ -163,7 +178,13 @@ const Catchup = objectType('Catchup')
   .optionalField('author', User)
   .listField('attendees', [Attendee])
 
-const Query = objectType('Query').listField('recentCatchups', [Catchup])
+const Query = objectType('Query')
+  .listField('recentCatchups', [Catchup])
+  .listParamField('searchCatchups', (params) => params.field('limit', 'Int').optionalField('name', 'String', ''), [
+    Catchup,
+  ])
+
+type SearchQueryParams = typeof Query.schema.searchCatchups.params
 
 type AnyType =
   | ObjectType<string, Record<string, { type: AnyType; optional: boolean; params: AnyParamObjectType | null }>>
@@ -300,6 +321,7 @@ function createResolvers(): SchemaResolvers<typeof Query> {
   return {
     Query: {
       recentCatchups: listRecentCatchups,
+      searchCatchups: listRecentCatchups,
     },
   }
 }
