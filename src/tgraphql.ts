@@ -58,7 +58,7 @@ class ObjectType<
   }
 }
 
-class ParamObjectType<S extends Record<string, { type: AnyParamType; optional: boolean }>> {
+class ParamObjectType<S extends Record<string, ParamDescriptor<{ type: AnyParamType; optional: boolean }>>> {
   schema: S
   constructor(schema: S) {
     this.schema = schema
@@ -66,37 +66,39 @@ class ParamObjectType<S extends Record<string, { type: AnyParamType; optional: b
   field<K extends string, T extends AnyParamType>(
     key: K,
     type: T
-  ): ParamObjectType<S & { [k in K]: { type: T; optional: false } }> {
+  ): ParamObjectType<S & { [k in K]: ParamDescriptor<{ type: T; optional: false }> }> {
     return new ParamObjectType({
       ...this.schema,
-      [key]: { type, optional: false },
+      [key]: { type, optional: false, defaultValue: null },
     })
   }
   optionalField<K extends string, T extends AnyParamType>(
     key: K,
-    type: T
-  ): ParamObjectType<S & { [k in K]: { type: T; optional: true } }> {
+    type: T,
+    defaultValue: ParamValue<T>
+  ): ParamObjectType<S & { [k in K]: ParamDescriptor<{ type: T; optional: true }> }> {
     return new ParamObjectType({
       ...this.schema,
-      [key]: { type, optional: true },
+      [key]: { type, optional: true, defaultValue },
     })
   }
   listField<K extends string, Ts extends [AnyParamType] | [AnyParamType, null]>(
     key: K,
     itemTypes: Ts
-  ): ParamObjectType<S & { [k in K]: { type: Ts; optional: false } }> {
+  ): ParamObjectType<S & { [k in K]: ParamDescriptor<{ type: Ts; optional: false }> }> {
     return new ParamObjectType({
       ...this.schema,
-      [key]: { type: itemTypes, optional: false },
+      [key]: { type: itemTypes, optional: false, defaultValue: null },
     })
   }
   optionalListField<K extends string, Ts extends [AnyParamType] | [AnyParamType, null]>(
     key: K,
-    itemTypes: Ts
-  ): ParamObjectType<S & { [k in K]: { type: Ts; optional: true } }> {
+    itemTypes: Ts,
+    defaultValue: ParamValue<Ts>
+  ): ParamObjectType<S & { [k in K]: ParamDescriptor<{ type: Ts; optional: true }> }> {
     return new ParamObjectType({
       ...this.schema,
-      [key]: { type: itemTypes, optional: true },
+      [key]: { type: itemTypes, optional: true, defaultValue },
     })
   }
 }
@@ -126,7 +128,7 @@ class UnionType<Name extends string, Ts extends ReadonlyArray<AnyObjectType>> ex
   }
 }
 
-type AnyParamObjectType = ParamObjectType<Record<string, { type: AnyParamType; optional: boolean }>>
+type AnyParamObjectType = ParamObjectType<Record<string, ParamDescriptor<{ type: AnyParamType; optional: boolean }>>>
 
 type AnyInputValueType = ScalarType | EnumValueType<string>
 
@@ -171,6 +173,8 @@ type AnyType =
   | EnumValueType<string>
   | [AnyType]
   | [AnyType, null]
+  | string
+  | number
 
 type ObjectValue<S extends Record<string, { type: AnyType; optional: boolean; params: AnyParamObjectType | null }>> = {
   [key in keyof S]: S[key]['optional'] extends true ? Value<S[key]['type']> | null : Value<S[key]['type']>
@@ -211,6 +215,12 @@ type ParamValue<T extends AnyParamType> = T extends [infer I extends AnyParamTyp
   : T
 
 type AnyParamType = ScalarType | EnumValueType<string> | [AnyParamType] | [AnyParamType, null]
+
+type ParamDescriptor<T extends { type: AnyParamType; optional: boolean }> = {
+  type: T['type']
+  optional: T['optional']
+  defaultValue: true extends T['optional'] ? any : ParamValue<T['type']>
+}
 
 // Testing:
 // type U = Value<typeof User>
@@ -302,7 +312,12 @@ function generateSchemaFieldParamStringPart<P extends AnyParamObjectType>(params
   return [
     '(',
     paramEntries
-      .map(([key, fieldDesc]) => `${key}: ${generateSchemaPart(fieldDesc.type).inline}${fieldDesc.optional ? '' : '!'}`)
+      .map(
+        ([key, fieldDesc]) =>
+          `${key}: ${generateSchemaPart(fieldDesc.type).inline}${fieldDesc.optional ? '' : '!'}${
+            fieldDesc.optional ? ` = ${generateSchemaPart(fieldDesc.defaultValue).inline}` : ''
+          }`
+      )
       .join(', '),
     ')',
   ].join('')
@@ -369,6 +384,17 @@ function generateSchemaPart(type: AnyType | AnyInputValueType | AnyParamType): {
   }
 
   // ScalarType
+  if (type === 'String' || type === 'Int' || type === 'Float' || type === 'Bool' || type === 'ID') {
+    return { hoisted: {}, inline: type }
+  }
+
+  if (typeof type === 'string') {
+    return { hoisted: {}, inline: `"${String(type).replace(/"/g, '\\"')}"` }
+  }
+  if (typeof type === 'number') {
+    return { hoisted: {}, inline: String(type) }
+  }
+
   return { hoisted: {}, inline: type }
 }
 
