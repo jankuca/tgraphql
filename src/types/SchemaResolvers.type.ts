@@ -1,0 +1,25 @@
+import { EnumType } from '../EnumType'
+import { EnumValueType } from '../EnumValueType'
+import { AnyObjectType, ObjectType } from '../outputs/ObjectType'
+import { UnionType } from '../outputs/UnionType'
+import { AnyType } from './AnyType.type'
+import { ScalarType } from './ScalarType.type'
+import { Value } from './Value.type'
+
+type Resolver<T extends AnyType> = T extends [infer I extends AnyType, null]
+  ? () => Array<Value<I> | null>
+  : T extends [infer I extends AnyType]
+  ? () => Array<Value<I>>
+  : T extends EnumType<string, infer I>
+  ? () => I[number]
+  : T extends UnionType<string, infer I extends ReadonlyArray<AnyObjectType>>
+  ? () => Resolver<I[number]>
+  : T extends EnumValueType<infer I>
+  ? () => I
+  : T extends ObjectType<string, infer I>
+  ? { [key in keyof I]: () => I[key]['optional'] extends true ? Value<I[key]['type']> | null : Value<I[key]['type']> }
+  : T extends ScalarType
+  ? () => string
+  : T
+
+export type SchemaResolvers<Q extends ObjectType<'Query', any>> = { Query: Resolver<Q> }

@@ -1,12 +1,4 @@
-import {
-  mutationType,
-  queryType,
-  subscriptionType,
-  useMutation,
-  useQuery,
-  useSubscription,
-  variable,
-} from '../src/tgraphql'
+import { mutationType, queryType, subscriptionType, useMutation, useQuery, useSubscription, variable } from '../src'
 import { AddAttendeeBatchInput, AddAttendeeInput, Mutation, Query, Subscription } from './server'
 
 try {

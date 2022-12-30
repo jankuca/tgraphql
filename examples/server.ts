@@ -1,4 +1,4 @@
-import { enumType, generateSchemaString, inputType, objectType, SchemaResolvers, unionType } from '../src/tgraphql'
+import { enumType, generateSchemaString, inputType, objectType, SchemaResolvers, unionType } from '../src'
 
 const CatchupAccessLevelEnum = enumType('CatchupAccessLevelEnum', 'owner', 'participant', 'viewer', 'denied')
 
