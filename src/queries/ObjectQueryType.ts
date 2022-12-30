@@ -111,6 +111,8 @@ export type ObjectQueryTypeOf<
   UnionListResolvers<ResolverType>
 >
 
+type OpType = 'query' | 'mutation' | 'subscription'
+
 export class ObjectQueryType<
   ResolverType extends AnyObjectType,
   Variables extends Record<string, VariableDescriptor<{ type: AnyInputValueType; optional: boolean }>>,
@@ -122,14 +124,20 @@ export class ObjectQueryType<
   UnionFields extends UnionResolvers<ResolverType>,
   UnionListFields extends UnionListResolvers<ResolverType>
 > {
+  opType: OpType
   resolverType: ResolverType
   schema: QuerySchema
   variables: Variables
 
-  constructor(resolverType: ResolverType, schema: QuerySchema, variables: Variables) {
+  constructor(opType: OpType, resolverType: ResolverType, schema: QuerySchema, variables: Variables) {
+    this.opType = opType
     this.resolverType = resolverType
     this.schema = schema
     this.variables = variables
+  }
+
+  toString(): string {
+    return generateQueryString(this, 'query')
   }
 
   field<
@@ -247,6 +255,7 @@ export class ObjectQueryType<
         [key in K]: { query: ScalarQueryType<Fields[K]['type']>; paramInputs: Record<never, any> }
       }
     > = new ObjectQueryType(
+      this.opType,
       this.resolverType,
       {
         ...this.schema,
@@ -272,6 +281,7 @@ export class ObjectQueryType<
         [key in K]: { query: ScalarQueryType<Fields[K]['type']>; paramInputs: Params }
       }
     > = new ObjectQueryType(
+      this.opType,
       this.resolverType,
       {
         ...this.schema,
@@ -294,6 +304,7 @@ export class ObjectQueryType<
         [key in K]: { query: [ScalarQueryType<ListFields[K]['type']>]; paramInputs: Record<never, any> }
       }
     > = new ObjectQueryType(
+      this.opType,
       this.resolverType,
       {
         ...this.schema,
@@ -313,7 +324,7 @@ export class ObjectQueryType<
     const schema = this.resolverType.schema as ObjectFields
     const fieldDesc = schema[key]
 
-    const emptySubquery = new ObjectQueryType(fieldDesc.type, {}, this.variables)
+    const emptySubquery = new ObjectQueryType(this.opType, fieldDesc.type, {}, this.variables)
     const subquery = makeSubquery(emptySubquery)
 
     const nextQueryType: ObjectQueryTypeOf<
@@ -323,6 +334,7 @@ export class ObjectQueryType<
         [key in K]: { query: Subquery; paramInputs: Record<never, any> }
       }
     > = new ObjectQueryType(
+      this.opType,
       this.resolverType,
       {
         ...this.schema,
@@ -342,7 +354,7 @@ export class ObjectQueryType<
     const schema = this.resolverType.schema as ObjectListFields
     const fieldDesc = schema[key]
 
-    const emptySubquery = new ObjectQueryType(fieldDesc.type[0], {}, this.variables)
+    const emptySubquery = new ObjectQueryType(this.opType, fieldDesc.type[0], {}, this.variables)
     const subquery = makeSubquery(emptySubquery)
 
     const nextQueryType: ObjectQueryTypeOf<
@@ -352,6 +364,7 @@ export class ObjectQueryType<
         [key in K]: { query: [Subquery]; paramInputs: Record<never, any> }
       }
     > = new ObjectQueryType(
+      this.opType,
       this.resolverType,
       {
         ...this.schema,
@@ -376,7 +389,7 @@ export class ObjectQueryType<
     const schema = this.resolverType.schema as ObjectFields
     const fieldDesc = schema[key]
 
-    const emptySubquery = new ObjectQueryType(fieldDesc.type, {}, this.variables)
+    const emptySubquery = new ObjectQueryType(this.opType, fieldDesc.type, {}, this.variables)
     const subquery = makeSubquery(emptySubquery)
 
     const nextQueryType: ObjectQueryTypeOf<
@@ -386,6 +399,7 @@ export class ObjectQueryType<
         [key in K]: { query: Subquery; paramInputs: Params }
       }
     > = new ObjectQueryType(
+      this.opType,
       this.resolverType,
       {
         ...this.schema,
@@ -410,7 +424,7 @@ export class ObjectQueryType<
     const schema = this.resolverType.schema as ObjectListFields
     const fieldDesc = schema[key]
 
-    const emptySubquery = new ObjectQueryType(fieldDesc.type[0], {}, this.variables)
+    const emptySubquery = new ObjectQueryType(this.opType, fieldDesc.type[0], {}, this.variables)
     const subquery = makeSubquery(emptySubquery)
 
     const nextQueryType: ObjectQueryTypeOf<
@@ -420,6 +434,7 @@ export class ObjectQueryType<
         [key in K]: { query: [Subquery]; paramInputs: Params }
       }
     > = new ObjectQueryType(
+      this.opType,
       this.resolverType,
       {
         ...this.schema,
@@ -445,7 +460,7 @@ export class ObjectQueryType<
       fieldDesc.type,
       Object.fromEntries(
         types.map((objectType) => {
-          const emptySubquery = new ObjectQueryType(objectType, {}, this.variables)
+          const emptySubquery = new ObjectQueryType(this.opType, objectType, {}, this.variables)
           const makeSubquery = makeSubqueries[objectType.typename as UnionTypeNames<Union>]
           if (!makeSubquery) throw new Error(`Missing subquery for union type ${objectType.typename}`)
           // @ts-expect-error
@@ -465,6 +480,7 @@ export class ObjectQueryType<
         }
       }
     > = new ObjectQueryType(
+      this.opType,
       this.resolverType,
       {
         ...this.schema,
@@ -490,7 +506,7 @@ export class ObjectQueryType<
       fieldDesc.type[0],
       Object.fromEntries(
         types.map((objectType) => {
-          const emptySubquery = new ObjectQueryType(objectType, {}, this.variables)
+          const emptySubquery = new ObjectQueryType(this.opType, objectType, {}, this.variables)
           const makeSubquery = makeSubqueries[objectType.typename as UnionTypeNames<Union>]
           if (!makeSubquery) throw new Error(`Missing subquery for union type ${objectType.typename}`)
           // @ts-expect-error
@@ -510,6 +526,7 @@ export class ObjectQueryType<
         }
       }
     > = new ObjectQueryType(
+      this.opType,
       this.resolverType,
       {
         ...this.schema,
@@ -526,7 +543,7 @@ export class ObjectQueryType<
       ResolverType,
       Variables & { [key in K]: { type: T; optional: false; defaultValue: null } },
       QuerySchema
-    > = new ObjectQueryType(this.resolverType, this.schema, {
+    > = new ObjectQueryType(this.opType, this.resolverType, this.schema, {
       ...this.variables,
       [key]: { type, optional: false, defaultValue: null },
     })
@@ -539,7 +556,7 @@ export class ObjectQueryType<
       ResolverType,
       Variables & { [key in K]: { type: T; optional: true; defaultValue: InputValue<T> } },
       QuerySchema
-    > = new ObjectQueryType(this.resolverType, this.schema, {
+    > = new ObjectQueryType(this.opType, this.resolverType, this.schema, {
       ...this.variables,
       [key]: { type, optional: true, defaultValue },
     })
@@ -549,15 +566,15 @@ export class ObjectQueryType<
 }
 
 export function queryType<Query extends AnyObjectType>(query: Query) {
-  return new ObjectQueryType(query, {}, {})
+  return new ObjectQueryType('query', query, {}, {})
 }
 
 export function mutationType<Mutation extends AnyObjectType>(mutation: Mutation) {
-  return new ObjectQueryType(mutation, {}, {})
+  return new ObjectQueryType('mutation', mutation, {}, {})
 }
 
 export function subscriptionType<Subscription extends AnyObjectType>(subscription: Subscription) {
-  return new ObjectQueryType(subscription, {}, {})
+  return new ObjectQueryType('subscription', subscription, {}, {})
 }
 
 export type AnyObjectQueryType = ObjectQueryType<
