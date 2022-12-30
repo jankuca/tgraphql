@@ -967,6 +967,40 @@ class ObjectQueryType<
   }
 
   paramField<
+    K extends Extract<keyof ObjectFields, string>,
+    Params extends VariableFieldParams<ObjectFields[K], Variables>,
+    SubquerySchema extends Record<string, { query: AnyQueryType; paramInputs: Record<never, any> }>,
+    Subquery extends ObjectQueryTypeOf<ObjectFields[K]['type'], Variables, SubquerySchema>
+  >(
+    key: K,
+    paramInputs: Params,
+    makeSubquery: (subquery: ObjectQueryTypeOf<ObjectFields[K]['type'], Variables>) => Subquery
+  ) {
+    const schema = this.resolverType.schema as ObjectFields
+    const fieldDesc = schema[key]
+
+    const emptySubquery = new ObjectQueryType(fieldDesc.type, {}, this.variables)
+    const subquery = makeSubquery(emptySubquery)
+
+    const nextQueryType: ObjectQueryTypeOf<
+      ResolverType,
+      Variables,
+      QuerySchema & {
+        [key in K]: { query: Subquery; paramInputs: Params }
+      }
+    > = new ObjectQueryType(
+      this.resolverType,
+      {
+        ...this.schema,
+        [key]: { query: subquery, paramInputs },
+      },
+      this.variables
+    )
+
+    return nextQueryType
+  }
+
+  listParamField<
     K extends Extract<keyof ObjectListFields, string>,
     Params extends VariableFieldParams<ObjectListFields[K], Variables>,
     SubquerySchema extends Record<string, { query: AnyQueryType; paramInputs: Record<never, any> }>,
@@ -1258,7 +1292,7 @@ try {
   const ListCatchups = queryType()
     .variable('limit', 'Int')
     // .field('recentCatchups', (catchup) =>
-    .paramField('recentCatchups', { 'limit': variable('limit') }, (catchup) =>
+    .listParamField('recentCatchups', { 'limit': variable('limit') }, (catchup) =>
       catchup
         .field('id')
         .field('name')
@@ -1311,7 +1345,7 @@ try {
   const SearchCatchups = queryType()
     .variable('s', 'String')
     .optionalVariable('lim', 'Int', 5)
-    .paramField('searchCatchups', { 'name': variable('s'), 'limit': variable('lim') }, (catchup) =>
+    .listParamField('searchCatchups', { 'name': variable('s'), 'limit': variable('lim') }, (catchup) =>
       catchup.field('id').field('name')
     )
   // .field('searchCatchups', (catchup) => catchup.field('id').field('name'))
@@ -1381,7 +1415,9 @@ const NotificationSubscription = subscriptionType().field('notification', (notif
 )
 const notificationSubscriptionData = useSubscription(NotificationSubscription).data
 
-const NotificationListSubscription = subscriptionType().paramField('notifications', { 'limit': 2 }, (notification) =>
-  notification.field('message')
+const NotificationListSubscription = subscriptionType().listParamField(
+  'notifications',
+  { 'limit': 2 },
+  (notification) => notification.field('message')
 )
 const notificationListSubscriptionData = useSubscription(NotificationListSubscription).data
