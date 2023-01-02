@@ -1,5 +1,4 @@
-import { AnyObjectType } from '../outputs/ObjectType'
-import { AnyType } from './AnyType.type'
+import { ScalarType } from './ScalarType.type'
 
-export type AnyScalarType = Exclude<AnyType, AnyObjectType | [...any]>
+export type AnyScalarType = ScalarType | string | number | boolean
 export type AnyScalarListType = [AnyScalarType] | [AnyScalarType, null]

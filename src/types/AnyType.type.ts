@@ -15,3 +15,4 @@ export type AnyType =
   | [AnyType, null]
   | string
   | number
+  | boolean

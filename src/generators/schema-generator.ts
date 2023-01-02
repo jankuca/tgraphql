@@ -117,7 +117,7 @@ export function generateSchemaPart(type: AnyType | AnyInputValueType | AnyInputF
   if (typeof type === 'string') {
     return { hoisted: {}, inline: `"${String(type).replace(/"/g, '\\"')}"` }
   }
-  if (typeof type === 'number') {
+  if (typeof type === 'number' || typeof type === 'boolean') {
     return { hoisted: {}, inline: String(type) }
   }
 
