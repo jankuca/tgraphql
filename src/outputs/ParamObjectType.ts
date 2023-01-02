@@ -1,9 +1,11 @@
+import { CustomScalarType } from '../CustomScalarType'
 import { EnumValueType } from '../EnumValueType'
 import { AnyInputFieldType, InputObjectType } from '../inputs/InputObjectType'
 import { ScalarType } from '../types/ScalarType.type'
 
 export type AnyParamType =
   | ScalarType
+  | CustomScalarType<string, ScalarType>
   | EnumValueType<string>
   | InputObjectType<string, Record<string, { type: AnyInputFieldType; optional: boolean }>>
   | [AnyParamType]

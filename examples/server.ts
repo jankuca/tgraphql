@@ -1,8 +1,10 @@
-import { enumType, generateSchemaString, inputType, objectType, SchemaResolvers, unionType } from '../src'
+import { enumType, generateSchemaString, inputType, objectType, scalarType, SchemaResolvers, unionType } from '../src'
+
+const DateString = scalarType('Date', 'String')
 
 const CatchupAccessLevelEnum = enumType('CatchupAccessLevelEnum', 'owner', 'participant', 'viewer', 'denied')
 
-const User = objectType('User').field('id', 'ID').field('name', 'String').field('joined_at', 'String')
+const User = objectType('User').field('id', 'ID').field('name', 'String').field('joined_at', DateString)
 
 const PseudoUser = objectType('PseudoUser').field('id', 'ID').field('name', 'String').field('origin_user', User)
 

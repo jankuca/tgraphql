@@ -1,3 +1,4 @@
+import { CustomScalarType } from '../CustomScalarType'
 import { EnumType } from '../EnumType'
 import { EnumValueType } from '../EnumValueType'
 import { AnyInputFieldType } from '../inputs/InputObjectType'
@@ -8,6 +9,8 @@ export type InputValue<T extends AnyInputValueType | AnyInputFieldType> = T exte
   ? I[number]
   : T extends EnumValueType<infer I>
   ? I
+  : T extends CustomScalarType<string, infer I>
+  ? InputValue<I>
   : T extends 'Int'
   ? number
   : T extends 'Bool'

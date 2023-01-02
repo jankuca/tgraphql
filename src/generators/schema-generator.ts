@@ -1,5 +1,6 @@
 import assertNever from 'assert-never'
 
+import { CustomScalarType } from '../CustomScalarType'
 import { EnumType } from '../EnumType'
 import { EnumValueType } from '../EnumValueType'
 import { AnyInputFieldType, InputObjectType } from '../inputs/InputObjectType'
@@ -107,6 +108,15 @@ export function generateSchemaPart(type: AnyType | AnyInputValueType | AnyInputF
     hoisted[type.typename] = schemaStringParts.join('\n')
 
     return { hoisted, inline: type.typename }
+  }
+
+  if (type instanceof CustomScalarType) {
+    return {
+      hoisted: {
+        [type.typename]: `scalar ${type.typename}`,
+      },
+      inline: type.typename,
+    }
   }
 
   // ScalarType

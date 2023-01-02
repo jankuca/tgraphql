@@ -1,3 +1,4 @@
+import { CustomScalarType } from '../CustomScalarType'
 import { EnumType } from '../EnumType'
 import { EnumValueType } from '../EnumValueType'
 import { AnyObjectType, ObjectType } from '../outputs/ObjectType'
@@ -23,6 +24,8 @@ type Resolver<T extends AnyType> = T extends [infer I extends AnyType, null]
         params: null extends I[key]['params'] ? Record<never, any> : ParamValues<NonNullable<I[key]['params']>>
       ) => I[key]['optional'] extends true ? Value<I[key]['type']> | null : Value<I[key]['type']>
     }
+  : T extends CustomScalarType<string, infer I>
+  ? () => Resolver<I>
   : T extends ScalarType
   ? () => string
   : T

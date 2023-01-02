@@ -1,3 +1,4 @@
+import { CustomScalarType } from '../CustomScalarType'
 import { EnumType } from '../EnumType'
 import { EnumValueType } from '../EnumValueType'
 import { AnyObjectType, ObjectType } from '../outputs/ObjectType'
@@ -9,6 +10,7 @@ export type AnyType =
   | ObjectType<string, Record<string, { type: AnyType; optional: boolean; params: AnyParamObjectType | null }>>
   | EnumType<string, ReadonlyArray<string>>
   | UnionType<string, ReadonlyArray<AnyObjectType>>
+  | CustomScalarType<string, ScalarType>
   | ScalarType
   | EnumValueType<string>
   | [AnyType]
