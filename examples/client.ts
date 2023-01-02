@@ -1,4 +1,5 @@
 import { mutationType, queryType, subscriptionType, useMutation, useQuery, useSubscription, variable } from '../src'
+import { QueryVariables } from '../src/types/QueryVariables.type'
 import { AddAttendeeBatchInput, AddAttendeeInput, Mutation, Query, Subscription } from './server'
 
 try {
@@ -45,7 +46,9 @@ try {
       catchup.field('id').field('name')
     )
 
-  useQuery(SearchCatchups).data
+  const variables: QueryVariables<typeof SearchCatchups> = { 's': 'test', 'lim': 10 }
+
+  useQuery(SearchCatchups, { variables }).data
 } catch (err) {
   console.error('err:', err)
 }

@@ -28,7 +28,7 @@ export type AnyParamInputType =
   | VariableInput<string>
   | InputObjectType<string, Record<string, { type: AnyInputFieldType; optional: boolean }>>
 
-type VariableDescriptor<T extends { type: AnyInputValueType; optional: boolean }> = {
+export type VariableDescriptor<T extends { type: AnyInputValueType; optional: boolean }> = {
   type: T['type']
   optional: T['optional']
   defaultValue: true extends T['optional'] ? any : InputValue<T['type']>
