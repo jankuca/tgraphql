@@ -13,3 +13,4 @@ export { mutationType, ObjectQueryType, queryType, subscriptionType } from './qu
 export type { QueryResult } from './types/QueryResult.type'
 export type { QueryVariables } from './types/QueryVariables.type'
 export type { SchemaResolvers } from './types/SchemaResolvers.type'
+export { mergeObjectTypes } from './utils/mergeObjectTypes'

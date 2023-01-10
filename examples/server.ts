@@ -1,4 +1,13 @@
-import { enumType, generateSchemaString, inputType, objectType, scalarType, SchemaResolvers, unionType } from '../src'
+import {
+  enumType,
+  generateSchemaString,
+  inputType,
+  mergeObjectTypes,
+  objectType,
+  scalarType,
+  SchemaResolvers,
+  unionType,
+} from '../src'
 
 const DateString = scalarType('Date', 'String')
 
@@ -23,13 +32,15 @@ const Catchup = objectType('Catchup')
   .optionalField('author', User)
   .listField('attendees', [Attendee])
 
-export const Query = objectType('Query')
-  .listField('recentCatchups', [Catchup])
-  .listParamField(
-    'searchCatchups',
-    (params) => params.field('limit', 'Int').optionalField('page', 'Int', 1).optionalField('name', 'String', ''),
-    [Catchup]
-  )
+const Query1 = objectType('Query').listField('recentCatchups', [Catchup])
+
+const Query2 = objectType('Query').listParamField(
+  'searchCatchups',
+  (params) => params.field('limit', 'Int').optionalField('page', 'Int', 1).optionalField('name', 'String', ''),
+  [Catchup]
+)
+
+export const Query = mergeObjectTypes(Query1, Query2)
 
 export const AddAttendeeInput = inputType('AddAttendeeInput')
   .field('access_level', CatchupAccessLevelEnum)
