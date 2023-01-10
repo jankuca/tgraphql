@@ -4,7 +4,7 @@ import { AddAttendeeBatchInput, AddAttendeeInput, Mutation, Query, Subscription 
 
 try {
   const ListCatchups = queryType(Query)
-    .variable('limit', 'Int')
+    .optionalVariable('limit', 'Int', 2)
     .listParamField('recentCatchups', { 'limit': variable('limit') }, (catchup) =>
       catchup
         .field('id')
@@ -33,7 +33,9 @@ try {
         )
     )
 
+  useQuery(ListCatchups, { variables: { 'limit': 1 } }).data
   useQuery(ListCatchups).data
+  useQuery(ListCatchups, { variables: {} }).data
 } catch (err) {
   console.error('err:', err)
 }
