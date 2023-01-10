@@ -103,12 +103,28 @@ export function createResolvers(): SchemaResolvers<typeof Query, typeof Mutation
     Mutation: {
       increase: () => 1,
       increaseBy: (params) => 2 + params.by,
-      addCatchup: () => listRecentCatchups()[0],
-      addCatchupAttendee: () => listRecentCatchups()[0]['attendees'][0],
+      addCatchup: () => {
+        const catchups = listRecentCatchups()
+        if (!catchups[0]) {
+          throw new Error('Catchup not found')
+        }
+
+        return catchups[0]
+      },
+      addCatchupAttendee: () => {
+        const catchups = listRecentCatchups()
+        const attendeess = catchups[0] ? catchups[0]['attendees'] : []
+        if (!attendeess[0]) {
+          throw new Error('Attendee not added')
+        }
+
+        return attendeess[0]
+      },
     },
     Subscription: {
       notification: () => ({ id: 'notification-id', message: 'Hello World!' }),
-      notifications: (params) => [{ id: 'notification-id', message: 'Hello World!' }],
+      notifications: (params) =>
+        [{ id: 'notification-id', message: 'Hello World!' }].slice(0, params.limit ?? Infinity),
     },
   }
 }
