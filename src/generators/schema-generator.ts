@@ -96,9 +96,14 @@ export function generateSchemaPart(
 
   if (type instanceof ObjectType) {
     const hoisted: Record<string, string> = {}
-    const schemaStringParts: Array<string> = [`type ${type.typename} {`]
 
-    Object.entries(type.schema).forEach(([key, fieldDesc]) => {
+    const fieldEntries = Object.entries(type.schema)
+    if (fieldEntries.length === 0) {
+      return { hoisted, inline: type.typename }
+    }
+
+    const schemaStringParts: Array<string> = [`type ${type.typename} {`]
+    fieldEntries.forEach(([key, fieldDesc]) => {
       const { hoisted: hoistedParts, inline } = generateSchemaPart(fieldDesc.type)
       Object.assign(hoisted, hoistedParts)
       schemaStringParts.push(
