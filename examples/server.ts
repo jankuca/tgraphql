@@ -6,8 +6,10 @@ import {
   objectType,
   scalarType,
   SchemaResolvers,
+  schemaType,
   unionType,
 } from '../src'
+import { SchemaObjectTypes } from '../src/types/SchemaResolvers.type'
 
 const DateString = scalarType('Date', 'String')
 
@@ -26,11 +28,14 @@ const Attendee = objectType('Attendee')
   .field('access_level', CatchupAccessLevelEnum)
   .optionalField('maybe_access_level', CatchupAccessLevelEnum)
 
+const Photo = objectType('Photo').field('id', 'ID').field('url', 'String')
+
 const Catchup = objectType('Catchup')
   .field('id', 'ID')
   .optionalField('name', 'String')
   .optionalField('author', User)
   .listField('attendees', [Attendee])
+  .listField('photos', [Photo])
 
 const Query1 = objectType('Query').listField('recentCatchups', [Catchup])
 
@@ -68,6 +73,8 @@ export const Subscription = objectType('Subscription')
   .field('notification', Notification)
   .listParamField('notifications', (params) => params.optionalField('limit', 'Int', 3), [Notification])
 
+const Schema = schemaType().query(Query).mutation(Mutation).subscription(Subscription)
+
 type CatchupModel = { 'id': string; 'name': string | null }
 type AttendeeModel = {
   'id': string
@@ -87,33 +94,43 @@ function listRecentCatchups(params?: { limit?: number }) {
   const authorAttendee = attendeeModels.find((attendeeModel) => attendeeModel['access_level'] === 'owner')
 
   return catchupModels
-    .map((catchupModel) => ({
-      ...catchupModel,
-      'author': authorAttendee
-        ? { 'id': authorAttendee['user_id'], 'name': authorAttendee['user_name'], 'joined_at': '2022-10-10' }
-        : { 'id': 'author-id', 'name': 'Author', 'joined_at': '2022-10-10' },
-      'attendees': attendeeModels.map((attendeeModel) => {
-        const { 'user_id': userId, 'user_name': userName, ...attendee } = attendeeModel
-        return {
-          ...attendee,
-          'maybe_user': null,
-          'maybe_access_level': null,
-          'user': { 'id': userId, 'name': userName, 'joined_at': '2022-10-10' },
-        }
-      }),
-    }))
+    .map((catchupModel) => {
+      return {
+        ...catchupModel,
+        'author': authorAttendee
+          ? { 'id': authorAttendee['user_id'], 'name': authorAttendee['user_name'], 'joined_at': '2022-10-10' }
+          : { 'id': 'author-id', 'name': 'Author', 'joined_at': '2022-10-10' },
+        'attendees': attendeeModels.map((attendeeModel) => {
+          const { 'user_id': userId, 'user_name': userName, ...attendee } = attendeeModel
+          return {
+            ...attendee,
+            'maybe_user': null,
+            'maybe_access_level': null,
+            'user': { 'id': userId, 'name': userName, 'joined_at': '2022-10-10' },
+          }
+        }),
+      }
+    })
     .slice(0, params?.limit ?? Infinity)
 }
 
-export function createResolvers(): SchemaResolvers<typeof Query, typeof Mutation, typeof Subscription> {
+type Entities = {
+  Catchup: CatchupModel
+  User: UserModel
+}
+
+type S = SchemaObjectTypes<typeof Schema>
+type S_typenames = keyof S
+
+export function createResolvers(): SchemaResolvers<typeof Schema, Entities> {
   return {
     Query: {
-      recentCatchups: listRecentCatchups,
-      searchCatchups: listRecentCatchups,
+      recentCatchups: (_, params) => listRecentCatchups(params),
+      searchCatchups: (_, params) => listRecentCatchups(params),
     },
     Mutation: {
       increase: () => 1,
-      increaseBy: (params) => 2 + params.by,
+      increaseBy: (_, params) => 2 + params.by,
       addCatchup: () => {
         const catchups = listRecentCatchups()
         if (!catchups[0]) {
@@ -134,8 +151,37 @@ export function createResolvers(): SchemaResolvers<typeof Query, typeof Mutation
     },
     Subscription: {
       notification: () => ({ id: 'notification-id', message: 'Hello World!' }),
-      notifications: (params) =>
+      notifications: (_, params) =>
         [{ id: 'notification-id', message: 'Hello World!' }].slice(0, params.limit ?? Infinity),
+    },
+    Catchup: {
+      photos: () => [{ id: 'photo-id', url: 'https://example.com/photo.jpg' }],
+      author: () => {
+        const attendeeModels: Array<Omit<AttendeeModel, 'catchup_id'> & { 'user_name': UserModel['name'] }> = [
+          { 'id': 'a1', 'user_id': 'u1', 'access_level': 'owner', 'user_name': 'User 1' },
+          { 'id': 'a2', 'user_id': 'u2', 'access_level': 'viewer', 'user_name': 'User 2' },
+        ]
+
+        const authorAttendee = attendeeModels.find((attendeeModel) => attendeeModel['access_level'] === 'owner')
+
+        return authorAttendee
+          ? { 'id': authorAttendee['user_id'], 'name': authorAttendee['user_name'], 'joined_at': '2022-10-10' }
+          : { 'id': 'author-id', 'name': 'Author', 'joined_at': '2022-10-10' }
+      },
+      attendees: () => {
+        const attendeeModels: Array<Omit<AttendeeModel, 'catchup_id'> & { 'user_name': UserModel['name'] }> = [
+          { 'id': 'a1', 'user_id': 'u1', 'access_level': 'owner', 'user_name': 'User 1' },
+          { 'id': 'a2', 'user_id': 'u2', 'access_level': 'viewer', 'user_name': 'User 2' },
+        ]
+        return attendeeModels.map((attendeeModel) => {
+          return {
+            ...attendeeModel,
+            'maybe_user': null,
+            'maybe_access_level': null,
+            'user': { 'id': 'a', 'name': 'A', 'joined_at': '2022-10-10' },
+          }
+        })
+      },
     },
   }
 }

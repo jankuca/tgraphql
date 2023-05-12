@@ -3,37 +3,104 @@ import { EnumType } from '../EnumType'
 import { EnumValueType } from '../EnumValueType'
 import { AnyObjectType, ObjectType } from '../outputs/ObjectType'
 import { ParamValues } from '../outputs/ParamObjectType'
-import { UnionType } from '../outputs/UnionType'
+import { AnyUnionType, UnionType, UnionTypeNames } from '../outputs/UnionType'
+import { AnySchemaType, SchemaType } from '../SchemaType'
 import { AnyType } from './AnyType.type'
 import { ScalarType } from './ScalarType.type'
 import { Value } from './Value.type'
 
-type Resolver<T extends AnyType> = T extends [infer I extends AnyType, null]
-  ? () => Array<Value<I> | null>
+type UnionResolver<Data extends object, Typename extends string> = {
+  __resolveType: (data: Data) => Typename
+}
+
+type ResolvedValue<T extends AnyType, Entities extends { [typename in string]?: object }> = T extends ObjectType<
+  infer N,
+  any
+>
+  ? N extends keyof Entities
+    ? Entities[N]
+    : Value<T>
+  : T extends [infer I extends AnyType, null]
+  ? Array<ResolvedValue<I, Entities> | null>
   : T extends [infer I extends AnyType]
-  ? () => Array<Value<I>>
+  ? Array<ResolvedValue<I, Entities>>
+  : Value<T>
+
+type Resolver<
+  Parent extends object,
+  T extends AnyType | AnySchemaType,
+  Entities extends { [typename in string]?: object }
+> = T extends [AnyType, null]
+  ? () => ResolvedValue<T, Entities>
+  : T extends [AnyType]
+  ? () => ResolvedValue<T, Entities>
   : T extends EnumType<string, infer I>
   ? () => I[number]
   : T extends UnionType<string, infer I extends ReadonlyArray<AnyObjectType>>
-  ? () => Resolver<I[number]>
+  ? () => UnionResolver<Parent, I[number]['typename']>
   : T extends EnumValueType<infer I>
   ? () => I
-  : T extends ObjectType<string, infer I>
+  : T extends ObjectType<infer N, infer I>
   ? {
-      [key in keyof I]: (
+      [key in Exclude<keyof I, N extends keyof Entities ? keyof Entities[N] : never>]: (
+        parent: Parent,
         params: null extends I[key]['params'] ? Record<never, any> : ParamValues<NonNullable<I[key]['params']>>
-      ) => I[key]['optional'] extends true ? Value<I[key]['type']> | null : Value<I[key]['type']>
+      ) => I[key]['optional'] extends true
+        ? ResolvedValue<I[key]['type'], Entities> | null
+        : ResolvedValue<I[key]['type'], Entities>
     }
   : T extends CustomScalarType<string, infer I>
-  ? () => Resolver<I>
+  ? () => Resolver<Parent, I, Entities>
   : T extends ScalarType
   ? () => string
   : T
 
-export type SchemaResolvers<
-  Query extends ObjectType<'Query', any> | null = null,
-  Mutation extends ObjectType<'Mutation', any> | null = null,
-  Subscription extends ObjectType<'Subscription', any> | null = null
-> = (Query extends AnyObjectType ? { 'Query': Resolver<Query> } : Record<never, any>) &
-  (Mutation extends AnyObjectType ? { 'Mutation': Resolver<Mutation> } : Record<never, any>) &
-  (Subscription extends AnyObjectType ? { 'Subscription': Resolver<Subscription> } : Record<never, any>)
+type ObjectUnionToObjectIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void
+  ? I
+  : never
+
+type NestedObjectTypes<T extends AnyType> = T extends ObjectType<string, infer I>
+  ? ObjectUnionToObjectIntersection<
+      {
+        [field in keyof I]: I[field]['type'] extends AnyObjectType
+          ? { [typename in I[field]['type']['typename']]: I[field]['type'] } & NestedObjectTypes<I[field]['type']>
+          : Record<never, any>
+      }[keyof I]
+    >
+  : Record<never, any>
+
+type NestedUnionTypes<T extends AnyObjectType> = T extends ObjectType<string, infer I>
+  ? ObjectUnionToObjectIntersection<
+      {
+        [field in keyof I]: I[field]['type'] extends AnyObjectType
+          ? NestedUnionTypes<I[field]['type']>
+          : Record<never, any>
+      }[keyof I]
+    >
+  : Record<never, any>
+
+export type SchemaObjectTypes<Schema extends AnySchemaType> = Schema extends SchemaType<infer Q, infer M, infer S>
+  ? ({ [key in Q['typename']]: Q } & NestedObjectTypes<Q>) &
+      ({ [key in M['typename']]: M } & NestedObjectTypes<M>) &
+      ({ [key in S['typename']]: S } & NestedObjectTypes<S>)
+  : Record<never, any>
+
+export type SchemaUnionTypes<Schema extends AnySchemaType> = Schema extends SchemaType<infer Q, infer M, infer S>
+  ? NestedUnionTypes<Q> & NestedUnionTypes<M> & NestedUnionTypes<S>
+  : Record<never, any>
+
+type SchemaEntities<Schema extends AnySchemaType> = { [typename in keyof SchemaObjectTypes<Schema>]?: object }
+
+export type SchemaResolvers<Schema extends AnySchemaType, Entities extends SchemaEntities<Schema> = never> = {
+  [typename in keyof SchemaObjectTypes<Schema>]?: SchemaObjectTypes<Schema>[typename] extends AnyObjectType
+    ? Resolver<
+        Entities[typename] extends object ? Entities[typename] : SchemaObjectTypes<Schema>[typename],
+        SchemaObjectTypes<Schema>[typename],
+        Entities
+      >
+    : never
+} & {
+  [typename in keyof SchemaUnionTypes<Schema>]?: SchemaUnionTypes<Schema>[typename] extends AnyUnionType
+    ? UnionResolver<Value<SchemaUnionTypes<Schema>[typename]>, UnionTypeNames<SchemaUnionTypes<Schema>[typename]>>
+    : never
+}

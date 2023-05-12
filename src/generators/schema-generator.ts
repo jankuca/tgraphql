@@ -7,10 +7,11 @@ import { AnyInputFieldType, InputObjectType } from '../inputs/InputObjectType'
 import { ObjectType } from '../outputs/ObjectType'
 import { AnyParamObjectType, AnyParamType } from '../outputs/ParamObjectType'
 import { UnionType } from '../outputs/UnionType'
+import { AnySchemaType, SchemaType } from '../SchemaType'
 import { AnyInputValueType } from '../types/AnyInputValueType.type'
 import { AnyType } from '../types/AnyType.type'
 
-export function generateSchemaString(rootType: AnyType): string {
+export function generateSchemaString(rootType: AnyType | AnySchemaType): string {
   const { hoisted } = generateSchemaPart(rootType)
   return Object.values(hoisted).join('\n\n')
 }
@@ -35,13 +36,30 @@ function generateSchemaFieldParamStringPart<P extends AnyParamObjectType>(params
   ].join('')
 }
 
-export function generateSchemaPart(type: AnyType | AnyInputValueType | AnyInputFieldType | AnyParamType): {
+export function generateSchemaPart(
+  type: AnyType | AnySchemaType | AnyInputValueType | AnyInputFieldType | AnyParamType
+): {
   hoisted: Record<string, string>
   inline: string
 } {
   if (Array.isArray(type)) {
     const { hoisted, inline } = generateSchemaPart(type[0])
     return { hoisted, inline: `[${inline}${type[1] === null ? '' : '!'}]` }
+  }
+
+  if (type instanceof SchemaType) {
+    const hoisted: Record<string, string> = {}
+
+    const { hoisted: hoistedQueryParts } = generateSchemaPart(type.Query)
+    Object.assign(hoisted, hoistedQueryParts)
+
+    const { hoisted: hoistedMutationParts } = generateSchemaPart(type.Mutation)
+    Object.assign(hoisted, hoistedMutationParts)
+
+    const { hoisted: hoistedSubscriptionParts } = generateSchemaPart(type.Subscription)
+    Object.assign(hoisted, hoistedSubscriptionParts)
+
+    return { hoisted, inline: '' }
   }
 
   if (type instanceof EnumValueType) {
