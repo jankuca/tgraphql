@@ -59,22 +59,30 @@ type ObjectUnionToObjectIntersection<U> = (U extends any ? (k: U) => void : neve
   ? I
   : never
 
-type NestedObjectTypes<T extends AnyType> = T extends ObjectType<string, infer I>
-  ? ObjectUnionToObjectIntersection<
+type NestedObjectTypes<T extends AnyType> = T extends [infer I extends AnyObjectType | AnyUnionType, null]
+  ? NestedObjectTypes<I>
+  : T extends [infer I extends AnyObjectType | AnyUnionType]
+  ? NestedObjectTypes<I>
+  : T extends UnionType<string, infer I>
+  ? NestedObjectTypes<I[number]>
+  : T extends ObjectType<infer N, infer I>
+  ? { [typename in N]: T } & ObjectUnionToObjectIntersection<
       {
-        [field in keyof I]: I[field]['type'] extends AnyObjectType
-          ? { [typename in I[field]['type']['typename']]: I[field]['type'] } & NestedObjectTypes<I[field]['type']>
-          : Record<never, any>
+        [field in keyof I]: NestedObjectTypes<I[field]['type']>
       }[keyof I]
     >
   : Record<never, any>
 
-type NestedUnionTypes<T extends AnyObjectType> = T extends ObjectType<string, infer I>
+type NestedUnionTypes<T extends AnyType> = T extends [infer I extends AnyObjectType | AnyUnionType, null]
+  ? NestedUnionTypes<I>
+  : T extends [infer I extends AnyObjectType | AnyUnionType]
+  ? NestedUnionTypes<I>
+  : T extends UnionType<infer N, infer I>
+  ? { [typename in N]: T } & NestedUnionTypes<I[number]>
+  : T extends ObjectType<string, infer I>
   ? ObjectUnionToObjectIntersection<
       {
-        [field in keyof I]: I[field]['type'] extends AnyObjectType
-          ? NestedUnionTypes<I[field]['type']>
-          : Record<never, any>
+        [field in keyof I]: NestedUnionTypes<I[field]['type']>
       }[keyof I]
     >
   : Record<never, any>
