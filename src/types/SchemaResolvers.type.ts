@@ -107,7 +107,15 @@ type SchemaObjectTypeResolver<
   Entities extends SchemaEntities<Schema>,
   Context
 > = Resolver<
-  Entities[typename] extends object ? Entities[typename] : SchemaObjectTypes<Schema>[typename],
+  Entities[typename] extends object
+    ? Entities[typename]
+    : typename extends Schema['Query']['typename']
+    ? never
+    : typename extends Schema['Mutation']['typename']
+    ? never
+    : typename extends Schema['Subscription']['typename']
+    ? never
+    : SchemaObjectTypes<Schema>[typename],
   SchemaObjectTypes<Schema>[typename],
   Entities,
   Context
