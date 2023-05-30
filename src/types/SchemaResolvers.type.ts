@@ -100,7 +100,10 @@ export type SchemaUnionTypes<Schema extends AnySchemaType> = Schema extends Sche
 type SchemaEntities<Schema extends AnySchemaType> = { [typename in keyof SchemaObjectTypes<Schema>]?: object }
 
 export type SchemaResolvers<Schema extends AnySchemaType, Entities extends SchemaEntities<Schema> = never> = {
-  [typename in keyof SchemaObjectTypes<Schema>]?: SchemaObjectTypes<Schema>[typename] extends AnyObjectType
+  [typename in Extract<
+    keyof SchemaObjectTypes<Schema>,
+    string
+  >]?: SchemaObjectTypes<Schema>[typename] extends AnyObjectType
     ? Resolver<
         Entities[typename] extends object ? Entities[typename] : SchemaObjectTypes<Schema>[typename],
         SchemaObjectTypes<Schema>[typename],
@@ -108,7 +111,10 @@ export type SchemaResolvers<Schema extends AnySchemaType, Entities extends Schem
       >
     : never
 } & {
-  [typename in keyof SchemaUnionTypes<Schema>]?: SchemaUnionTypes<Schema>[typename] extends AnyUnionType
+  [typename in Extract<
+    keyof SchemaUnionTypes<Schema>,
+    string
+  >]?: SchemaUnionTypes<Schema>[typename] extends AnyUnionType
     ? UnionResolver<Value<SchemaUnionTypes<Schema>[typename]>, UnionTypeNames<SchemaUnionTypes<Schema>[typename]>>
     : never
 }
