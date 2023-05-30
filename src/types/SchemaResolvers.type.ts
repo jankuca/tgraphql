@@ -99,16 +99,28 @@ export type SchemaUnionTypes<Schema extends AnySchemaType> = Schema extends Sche
 
 type SchemaEntities<Schema extends AnySchemaType> = { [typename in keyof SchemaObjectTypes<Schema>]?: object }
 
+type SchemaObjectTypeResolver<
+  Schema extends AnySchemaType,
+  typename extends string,
+  Entities extends SchemaEntities<Schema>
+> = Resolver<
+  Entities[typename] extends object ? Entities[typename] : SchemaObjectTypes<Schema>[typename],
+  SchemaObjectTypes<Schema>[typename],
+  Entities
+>
+
 export type SchemaResolvers<Schema extends AnySchemaType, Entities extends SchemaEntities<Schema> = never> = {
   [typename in Extract<
     keyof SchemaObjectTypes<Schema>,
     string
   >]?: SchemaObjectTypes<Schema>[typename] extends AnyObjectType
-    ? Resolver<
-        Entities[typename] extends object ? Entities[typename] : SchemaObjectTypes<Schema>[typename],
-        SchemaObjectTypes<Schema>[typename],
-        Entities
-      >
+    ? typename extends Schema['Query']['typename']
+      ? Partial<SchemaObjectTypeResolver<Schema, typename, Entities>>
+      : typename extends Schema['Mutation']['typename']
+      ? Partial<SchemaObjectTypeResolver<Schema, typename, Entities>>
+      : typename extends Schema['Subscription']['typename']
+      ? Partial<SchemaObjectTypeResolver<Schema, typename, Entities>>
+      : SchemaObjectTypeResolver<Schema, typename, Entities>
     : never
 } & {
   [typename in Extract<
