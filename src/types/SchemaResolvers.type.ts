@@ -9,8 +9,8 @@ import { AnyType } from './AnyType.type'
 import { ScalarType } from './ScalarType.type'
 import { Value } from './Value.type'
 
-type UnionResolver<Data extends object, Typename extends string> = {
-  __resolveType: (data: Data) => Typename
+type UnionResolver<Data extends object, Typename extends string, Context> = {
+  __resolveType: (data: Data, context: Context) => Typename
 }
 
 type ResolvedValue<T extends AnyType, Entities extends { [typename in string]?: object }> = T extends ObjectType<
@@ -29,7 +29,8 @@ type ResolvedValue<T extends AnyType, Entities extends { [typename in string]?: 
 type Resolver<
   Parent extends object,
   T extends AnyType | AnySchemaType,
-  Entities extends { [typename in string]?: object }
+  Entities extends { [typename in string]?: object },
+  Context
 > = T extends [AnyType, null]
   ? () => ResolvedValue<T, Entities>
   : T extends [AnyType]
@@ -37,20 +38,21 @@ type Resolver<
   : T extends EnumType<string, infer I>
   ? () => I[number]
   : T extends UnionType<string, infer I extends ReadonlyArray<AnyObjectType>>
-  ? () => UnionResolver<Parent, I[number]['typename']>
+  ? () => UnionResolver<Parent, I[number]['typename'], Context>
   : T extends EnumValueType<infer I>
   ? () => I
   : T extends ObjectType<infer N, infer I>
   ? {
       [key in Exclude<keyof I, N extends keyof Entities ? keyof Entities[N] : never>]: (
         parent: Parent,
-        params: null extends I[key]['params'] ? Record<never, any> : ParamValues<NonNullable<I[key]['params']>>
+        params: null extends I[key]['params'] ? Record<never, any> : ParamValues<NonNullable<I[key]['params']>>,
+        context: Context
       ) => I[key]['optional'] extends true
         ? ResolvedValue<I[key]['type'], Entities> | null
         : ResolvedValue<I[key]['type'], Entities>
     }
   : T extends CustomScalarType<string, infer I>
-  ? () => Resolver<Parent, I, Entities>
+  ? () => Resolver<Parent, I, Entities, Context>
   : T extends ScalarType
   ? () => string
   : T
@@ -102,31 +104,41 @@ type SchemaEntities<Schema extends AnySchemaType> = { [typename in keyof SchemaO
 type SchemaObjectTypeResolver<
   Schema extends AnySchemaType,
   typename extends string,
-  Entities extends SchemaEntities<Schema>
+  Entities extends SchemaEntities<Schema>,
+  Context
 > = Resolver<
   Entities[typename] extends object ? Entities[typename] : SchemaObjectTypes<Schema>[typename],
   SchemaObjectTypes<Schema>[typename],
-  Entities
+  Entities,
+  Context
 >
 
-export type SchemaResolvers<Schema extends AnySchemaType, Entities extends SchemaEntities<Schema> = never> = {
+export type SchemaResolvers<
+  Schema extends AnySchemaType,
+  Entities extends SchemaEntities<Schema> = never,
+  Context = never
+> = {
   [typename in Extract<
     keyof SchemaObjectTypes<Schema>,
     string
   >]?: SchemaObjectTypes<Schema>[typename] extends AnyObjectType
     ? typename extends Schema['Query']['typename']
-      ? Partial<SchemaObjectTypeResolver<Schema, typename, Entities>>
+      ? Partial<SchemaObjectTypeResolver<Schema, typename, Entities, Context>>
       : typename extends Schema['Mutation']['typename']
-      ? Partial<SchemaObjectTypeResolver<Schema, typename, Entities>>
+      ? Partial<SchemaObjectTypeResolver<Schema, typename, Entities, Context>>
       : typename extends Schema['Subscription']['typename']
-      ? Partial<SchemaObjectTypeResolver<Schema, typename, Entities>>
-      : SchemaObjectTypeResolver<Schema, typename, Entities>
+      ? Partial<SchemaObjectTypeResolver<Schema, typename, Entities, Context>>
+      : SchemaObjectTypeResolver<Schema, typename, Entities, Context>
     : never
 } & {
   [typename in Extract<
     keyof SchemaUnionTypes<Schema>,
     string
   >]?: SchemaUnionTypes<Schema>[typename] extends AnyUnionType
-    ? UnionResolver<Value<SchemaUnionTypes<Schema>[typename]>, UnionTypeNames<SchemaUnionTypes<Schema>[typename]>>
+    ? UnionResolver<
+        Value<SchemaUnionTypes<Schema>[typename]>,
+        UnionTypeNames<SchemaUnionTypes<Schema>[typename]>,
+        Context
+      >
     : never
 }
