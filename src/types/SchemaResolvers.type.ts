@@ -34,9 +34,9 @@ type Resolver<
   Entities extends { [typename in string]?: object },
   Context
 > = T extends [AnyType, null]
-  ? () => ResolvedValue<T, Entities>
+  ? () => ResolvedValue<T, Entities> | Promise<ResolvedValue<T, Entities>>
   : T extends [AnyType]
-  ? () => ResolvedValue<T, Entities>
+  ? () => ResolvedValue<T, Entities> | Promise<ResolvedValue<T, Entities>>
   : T extends EnumType<string, infer I>
   ? () => I[number]
   : T extends UnionType<string, infer I extends ReadonlyArray<AnyObjectType>>
@@ -50,8 +50,8 @@ type Resolver<
         params: null extends I[key]['params'] ? Record<never, any> : ParamValues<NonNullable<I[key]['params']>>,
         context: Context
       ) => I[key]['optional'] extends true
-        ? ResolvedValue<I[key]['type'], Entities> | null
-        : ResolvedValue<I[key]['type'], Entities>
+        ? ResolvedValue<I[key]['type'], Entities> | null | Promise<ResolvedValue<I[key]['type'], Entities> | null>
+        : ResolvedValue<I[key]['type'], Entities> | Promise<ResolvedValue<I[key]['type'], Entities>>
     }
   : T extends CustomScalarType<string, infer I>
   ? () => Resolver<Parent, I, Entities, Context>
