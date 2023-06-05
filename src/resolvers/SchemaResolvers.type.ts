@@ -1,4 +1,5 @@
 import { AnySchemaType } from '../SchemaType'
+import { Prettify } from '../types/Prettify.type'
 import { CompleteSchemaResolvers } from './CompleteSchemaResolvers.type'
 import { SchemaEntities } from './SchemaEntities.type'
 import { SchemaObjectTypeResolver } from './SchemaObjectTypeResolver.type'
@@ -13,17 +14,21 @@ export type SchemaResolvers<
   Entities extends SchemaEntities<Schema> = never,
   Context = never
 > = Partial<
-  // NOTE: Entry points (Query, Mutation, Subscription) are allowed to be defined in multiple places and merged.
-  Omit<
-    CompleteSchemaResolvers<Schema, Entities, Context>,
-    Schema['Query']['typename'] | Schema['Mutation']['typename'] | Schema['Subscription']['typename']
-  > & {
-    [typename in Schema['Query']['typename']]: Partial<SchemaObjectTypeResolver<Schema, typename, Entities, Context>>
-  } & {
-    [typename in Schema['Mutation']['typename']]: Partial<SchemaObjectTypeResolver<Schema, typename, Entities, Context>>
-  } & {
-    [typename in Schema['Subscription']['typename']]: Partial<
-      SchemaObjectTypeResolver<Schema, typename, Entities, Context>
-    >
-  }
+  Prettify<
+    // NOTE: Entry points (Query, Mutation, Subscription) are allowed to be defined in multiple places and merged.
+    Omit<
+      CompleteSchemaResolvers<Schema, Entities, Context>,
+      Schema['Query']['typename'] | Schema['Mutation']['typename'] | Schema['Subscription']['typename']
+    > & {
+      [typename in Schema['Query']['typename']]: Partial<SchemaObjectTypeResolver<Schema, typename, Entities, Context>>
+    } & {
+      [typename in Schema['Mutation']['typename']]: Partial<
+        SchemaObjectTypeResolver<Schema, typename, Entities, Context>
+      >
+    } & {
+      [typename in Schema['Subscription']['typename']]: Partial<
+        SchemaObjectTypeResolver<Schema, typename, Entities, Context>
+      >
+    }
+  >
 >

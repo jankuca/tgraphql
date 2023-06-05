@@ -6,6 +6,7 @@ import { AnyParamObjectType, ParamValues } from '../outputs/ParamObjectType'
 import { UnionType } from '../outputs/UnionType'
 import { AnySchemaType } from '../SchemaType'
 import { AnyType } from '../types/AnyType.type'
+import { Prettify } from '../types/Prettify.type'
 import { ScalarType } from '../types/ScalarType.type'
 import { ResolvedValue } from './ResolvedValue.type'
 import { UnionResolver } from './UnionResolver.type'
@@ -39,23 +40,25 @@ export type Resolver<
   : T extends EnumValueType<infer I>
   ? () => I
   : T extends ObjectType<infer N, infer I>
-  ? {
-      // Fields present on the entity objects are auto-resolved and do not required a dedicated resolver.
-      [key in Exclude<keyof I, N extends keyof Entities ? keyof Entities[N] : never>]: ObjectFieldResolver<
-        Parent,
-        I[key],
-        Entities,
-        Context
-      >
-    } & {
-      // Fields present on the entity objects are auto-resolved but can have a dedicated (overriding) resolver.
-      [key in Extract<keyof I, N extends keyof Entities ? keyof Entities[N] : never>]?: ObjectFieldResolver<
-        Parent,
-        I[key],
-        Entities,
-        Context
-      >
-    }
+  ? Prettify<
+      {
+        // Fields present on the entity objects are auto-resolved and do not required a dedicated resolver.
+        [key in Exclude<keyof I, N extends keyof Entities ? keyof Entities[N] : never>]: ObjectFieldResolver<
+          Parent,
+          I[key],
+          Entities,
+          Context
+        >
+      } & {
+        // Fields present on the entity objects are auto-resolved but can have a dedicated (overriding) resolver.
+        [key in Extract<keyof I, N extends keyof Entities ? keyof Entities[N] : never>]?: ObjectFieldResolver<
+          Parent,
+          I[key],
+          Entities,
+          Context
+        >
+      }
+    >
   : T extends CustomScalarType<string, infer I>
   ? () => Resolver<Parent, I, Entities, Context>
   : T extends ScalarType

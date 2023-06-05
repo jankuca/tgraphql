@@ -1,6 +1,7 @@
 import { AnyObjectType } from '../outputs/ObjectType'
 import { AnyUnionType, UnionTypeNames } from '../outputs/UnionType'
 import { AnySchemaType } from '../SchemaType'
+import { Prettify } from '../types/Prettify.type'
 import { Value } from '../types/Value.type'
 import { AutoresolvedEntityNames } from './AutoresolvedEntityNames.type'
 import { SchemaEntities } from './SchemaEntities.type'
@@ -16,7 +17,7 @@ export type CompleteSchemaResolvers<
   Schema extends AnySchemaType,
   Entities extends SchemaEntities<Schema> = never,
   Context = never
-> =
+> = Prettify<
   // Auto-resolved entities (see above) are not required to have dedicated resolvers.
   Omit<
     {
@@ -53,3 +54,4 @@ export type CompleteSchemaResolvers<
           >
         : never
     }
+>

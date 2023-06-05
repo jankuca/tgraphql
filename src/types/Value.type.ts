@@ -7,15 +7,17 @@ import { AnyParamObjectType } from '../outputs/ParamObjectType'
 import { UnionType } from '../outputs/UnionType'
 import { AnyType } from './AnyType.type'
 import { InputValue } from './InputValue.type'
+import { Prettify } from './Prettify.type'
 import { ScalarType } from './ScalarType.type'
 
-type ObjectValue<S extends Record<string, { type: AnyType; optional: boolean; params: AnyParamObjectType | null }>> = {
-  [key in keyof S]: S[key]['optional'] extends true ? Value<S[key]['type']> | null : Value<S[key]['type']>
-}
+type ObjectValue<S extends Record<string, { type: AnyType; optional: boolean; params: AnyParamObjectType | null }>> =
+  Prettify<{
+    [key in keyof S]: S[key]['optional'] extends true ? Value<S[key]['type']> | null : Value<S[key]['type']>
+  }>
 
-type InputObjectValue<S extends Record<string, { type: AnyInputFieldType; optional: boolean }>> = {
+type InputObjectValue<S extends Record<string, { type: AnyInputFieldType; optional: boolean }>> = Prettify<{
   [key in keyof S]: S[key]['optional'] extends true ? InputValue<S[key]['type']> | null : InputValue<S[key]['type']>
-}
+}>
 
 export type Value<T extends AnyType> = T extends [infer I extends AnyType, null]
   ? Array<Value<I>>

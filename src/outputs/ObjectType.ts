@@ -1,5 +1,6 @@
 import { NamedType } from '../NamedType.abstract'
 import { AnyType } from '../types/AnyType.type'
+import { Prettify } from '../types/Prettify.type'
 import { AnyParamObjectType, ParamObjectType } from './ParamObjectType'
 
 export class ObjectType<
@@ -15,7 +16,7 @@ export class ObjectType<
   field<K extends string, T extends AnyType>(
     key: K,
     type: T
-  ): ObjectType<Name, S & { [k in K]: { type: T; optional: false; params: AnyParamObjectType | null } }> {
+  ): ObjectType<Name, Prettify<S & { [k in K]: { type: T; optional: false; params: AnyParamObjectType | null } }>> {
     return new ObjectType(this.typename, {
       ...this.schema,
       [key]: { type, optional: false, params: null },
@@ -26,7 +27,7 @@ export class ObjectType<
     key: K,
     paramBuilder: (params: ParamObjectType<Record<never, any>>) => Params,
     type: T
-  ): ObjectType<Name, S & { [k in K]: { type: T; optional: false; params: Params } }> {
+  ): ObjectType<Name, Prettify<S & { [k in K]: { type: T; optional: false; params: Params } }>> {
     return new ObjectType(this.typename, {
       ...this.schema,
       [key]: { type, optional: false, params: paramBuilder(new ParamObjectType({})) },
@@ -36,7 +37,7 @@ export class ObjectType<
   optionalField<K extends string, T extends AnyType>(
     key: K,
     type: T
-  ): ObjectType<Name, S & { [k in K]: { type: T; optional: true; params: AnyParamObjectType | null } }> {
+  ): ObjectType<Name, Prettify<S & { [k in K]: { type: T; optional: true; params: AnyParamObjectType | null } }>> {
     return new ObjectType(this.typename, {
       ...this.schema,
       [key]: { type, optional: true, params: null },
@@ -46,7 +47,7 @@ export class ObjectType<
   listField<K extends string, Ts extends [AnyType] | [AnyType, null]>(
     key: K,
     itemTypes: Ts
-  ): ObjectType<Name, S & { [k in K]: { type: Ts; optional: false; params: AnyParamObjectType | null } }> {
+  ): ObjectType<Name, Prettify<S & { [k in K]: { type: Ts; optional: false; params: AnyParamObjectType | null } }>> {
     return new ObjectType(this.typename, {
       ...this.schema,
       [key]: { type: itemTypes, optional: false, params: null },
@@ -61,7 +62,7 @@ export class ObjectType<
     key: K,
     paramBuilder: (params: ParamObjectType<Record<never, any>>) => Params,
     itemTypes: Ts
-  ): ObjectType<Name, S & { [k in K]: { type: Ts; optional: false; params: Params } }> {
+  ): ObjectType<Name, Prettify<S & { [k in K]: { type: Ts; optional: false; params: Params } }>> {
     return new ObjectType(this.typename, {
       ...this.schema,
       [key]: { type: itemTypes, optional: false, params: paramBuilder(new ParamObjectType({})) },
@@ -71,7 +72,7 @@ export class ObjectType<
   optionalListField<K extends string, Ts extends [AnyType] | [AnyType, null]>(
     key: K,
     itemTypes: Ts
-  ): ObjectType<Name, S & { [k in K]: { type: Ts; optional: true; params: AnyParamObjectType | null } }> {
+  ): ObjectType<Name, Prettify<S & { [k in K]: { type: Ts; optional: true; params: AnyParamObjectType | null } }>> {
     return new ObjectType(this.typename, {
       ...this.schema,
       [key]: { type: itemTypes, optional: true, params: null },
