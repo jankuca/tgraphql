@@ -20,6 +20,8 @@ type ResolvedValue<T extends AnyType, Entities extends { [typename in string]?: 
   ? N extends keyof Entities
     ? Entities[N]
     : Value<T>
+  : T extends UnionType<any, infer I extends ReadonlyArray<AnyObjectType>>
+  ? ResolvedValue<I[number], Entities>
   : T extends [infer I extends AnyType, null]
   ? Array<ResolvedValue<I, Entities> | null>
   : T extends [infer I extends AnyType]
