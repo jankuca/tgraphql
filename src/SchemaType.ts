@@ -46,4 +46,6 @@ export function schemaType() {
   return new SchemaType(objectType('Query'), objectType('Mutation'), objectType('Subscription'))
 }
 
+export type EmptySchemaType = ReturnType<typeof schemaType>
+
 export type AnySchemaType = SchemaType<AnyObjectType, AnyObjectType, AnyObjectType>
