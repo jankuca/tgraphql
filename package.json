@@ -1,6 +1,6 @@
 {
   "name": "t-graphql",
-  "version": "0.0.3-2",
+  "version": "0.0.3-3",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "example": "ts-node examples/client",
