@@ -14,4 +14,8 @@ export type AutoresolvedEntityNames<Schema extends AnySchemaType, Entities exten
     ? // Empty desired objects are considered auto-resolved.
       typename
     : never
-}[Extract<keyof SchemaObjectTypes<Schema>, string>]
+}[Exclude<
+  Extract<keyof SchemaObjectTypes<Schema>, string>,
+  // Entrypoints are never auto-resolved.
+  Schema['Query']['typename'] | Schema['Mutation']['typename'] | Schema['Subscription']['typename']
+>]

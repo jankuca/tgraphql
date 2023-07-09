@@ -11,7 +11,7 @@ import { ScalarType } from '../types/ScalarType.type'
 import { ResolvedValue } from './ResolvedValue.type'
 import { UnionResolver } from './UnionResolver.type'
 
-type ObjectFieldResolver<
+export type ObjectFieldResolver<
   Parent extends object,
   F extends { type: AnyType; optional: boolean; params: AnyParamObjectType | null },
   Entities extends { [typename in string]?: object },
@@ -23,6 +23,19 @@ type ObjectFieldResolver<
 ) => F['optional'] extends true
   ? ResolvedValue<F['type'], Entities> | null | Promise<ResolvedValue<F['type'], Entities> | null>
   : ResolvedValue<F['type'], Entities> | Promise<ResolvedValue<F['type'], Entities>>
+
+export type ObjectFieldGeneratorResolver<
+  Parent extends object,
+  F extends { type: AnyType; optional: boolean; params: AnyParamObjectType | null },
+  Entities extends { [typename in string]?: object },
+  Context
+> = (
+  parent: Parent,
+  params: null extends F['params'] ? Record<never, any> : ParamValues<NonNullable<F['params']>>,
+  context: Context
+) => F['optional'] extends true
+  ? AsyncGenerator<ResolvedValue<F['type'], Entities> | null>
+  : AsyncGenerator<ResolvedValue<F['type'], Entities>>
 
 export type Resolver<
   Parent extends object,

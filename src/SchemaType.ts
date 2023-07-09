@@ -26,7 +26,7 @@ export class SchemaType<
   }
 
   mutation<M extends AnyObjectType>(type: M): SchemaType<Query, M, Subscription> {
-    if (this.Query.typename !== 'Mutation') {
+    if (type.typename !== 'Mutation') {
       throw new Error('Only types named "Mutation" can be used as the root Mutation entrypoint')
     }
 
@@ -34,7 +34,7 @@ export class SchemaType<
   }
 
   subscription<S extends AnyObjectType>(type: S): SchemaType<Query, Mutation, S> {
-    if (this.Query.typename !== 'Subscription') {
+    if (type.typename !== 'Subscription') {
       throw new Error('Only types named "Subscription" can be used as the root Subscription entrypoint')
     }
 

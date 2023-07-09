@@ -4,6 +4,7 @@ import { AnySchemaType } from '../SchemaType'
 import { Prettify } from '../types/Prettify.type'
 import { Value } from '../types/Value.type'
 import { AutoresolvedEntityNames } from './AutoresolvedEntityNames.type'
+import { ObjectFieldGeneratorResolver, ObjectFieldResolver } from './Resolver.type'
 import { SchemaEntities } from './SchemaEntities.type'
 import { SchemaObjectTypeResolver } from './SchemaObjectTypeResolver.type'
 import { SchemaObjectTypes } from './SchemaObjectTypes.type'
@@ -19,39 +20,57 @@ export type CompleteSchemaResolvers<
   Context = never
 > = Prettify<
   // Auto-resolved entities (see above) are not required to have dedicated resolvers.
-  Omit<
-    {
-      [typename in Extract<
-        keyof SchemaObjectTypes<Schema>,
-        string
-      >]: SchemaObjectTypes<Schema>[typename] extends AnyObjectType
-        ? SchemaObjectTypeResolver<Schema, typename, Entities, Context>
-        : never
-    },
-    AutoresolvedEntityNames<Schema, Entities>
-  > &
-    // Unresolved entities are required to have dedicated resolvers.
-    Pick<
-      {
-        [typename in Extract<
-          keyof SchemaObjectTypes<Schema>,
-          string
-        >]?: SchemaObjectTypes<Schema>[typename] extends AnyObjectType
-          ? SchemaObjectTypeResolver<Schema, typename, Entities, Context>
-          : never
-      },
+  {
+    [typename in Exclude<
+      Extract<keyof SchemaObjectTypes<Schema>, string>,
+      | AutoresolvedEntityNames<Schema, Entities>
+      | Schema['Query']['typename']
+      | Schema['Mutation']['typename']
+      | Schema['Subscription']['typename']
+    >]: SchemaObjectTypes<Schema>[typename] extends AnyObjectType
+      ? SchemaObjectTypeResolver<Schema, typename, Entities, Context>
+      : never
+  } & // Unresolved entities are required to have dedicated resolvers.
+  {
+    [typename in Extract<
+      keyof SchemaObjectTypes<Schema>,
       AutoresolvedEntityNames<Schema, Entities>
-    > & {
-      // Unions are never considered auto-resolved.
-      [typename in Extract<
-        keyof SchemaUnionTypes<Schema>,
-        string
-      >]: SchemaUnionTypes<Schema>[typename] extends AnyUnionType
-        ? UnionResolver<
-            Value<SchemaUnionTypes<Schema>[typename]>,
-            UnionTypeNames<SchemaUnionTypes<Schema>[typename]>,
-            Context
-          >
-        : never
+    >]?: SchemaObjectTypes<Schema>[typename] extends AnyObjectType
+      ? SchemaObjectTypeResolver<Schema, typename, Entities, Context>
+      : never
+  } & {
+    // Unions are never considered auto-resolved.
+    [typename in Extract<
+      keyof SchemaUnionTypes<Schema>,
+      string
+    >]: SchemaUnionTypes<Schema>[typename] extends AnyUnionType
+      ? UnionResolver<
+          Value<SchemaUnionTypes<Schema>[typename]>,
+          UnionTypeNames<SchemaUnionTypes<Schema>[typename]>,
+          Context
+        >
+      : never
+  } & {
+    [typename in Schema['Query']['typename']]: SchemaObjectTypeResolver<Schema, typename, Entities, Context>
+  } & {
+    [typename in Schema['Mutation']['typename']]: {
+      [mutationField in keyof Schema['Mutation']['schema']]: ObjectFieldResolver<
+        never,
+        Schema['Mutation']['schema'][mutationField],
+        Entities,
+        Context
+      >
     }
+  } & {
+    [typename in Schema['Subscription']['typename']]: {
+      [subscriptionField in keyof Schema['Subscription']['schema']]: {
+        subscribe: ObjectFieldGeneratorResolver<
+          never,
+          Schema['Subscription']['schema'][subscriptionField],
+          Entities,
+          Context
+        >
+      }
+    }
+  }
 >
