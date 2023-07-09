@@ -1,4 +1,5 @@
 import { CustomScalarType } from '../CustomScalarType'
+import { EnumType } from '../EnumType'
 import { EnumValueType } from '../EnumValueType'
 import { AnyInputFieldType, InputObjectType } from '../inputs/InputObjectType'
 import { Prettify } from '../types/Prettify.type'
@@ -7,7 +8,7 @@ import { ScalarType } from '../types/ScalarType.type'
 export type AnyParamType =
   | ScalarType
   | CustomScalarType<string, ScalarType>
-  | EnumValueType<string>
+  | EnumType<string, string[]>
   | InputObjectType<string, Record<string, { type: AnyInputFieldType; optional: boolean }>>
   | [AnyParamType]
   | [AnyParamType, null]
@@ -16,6 +17,8 @@ type ParamValue<T extends AnyParamType> = T extends [infer I extends AnyParamTyp
   ? Array<ParamValue<I>>
   : T extends [infer I extends AnyParamType]
   ? Array<ParamValue<I>>
+  : T extends EnumType<string, infer Vs>
+  ? Vs[number]
   : T extends EnumValueType<infer I>
   ? I
   : T extends 'Int'

@@ -16,24 +16,41 @@ export function generateSchemaString(rootType: AnyType | AnySchemaType): string 
   return Object.values(hoisted).join('\n\n')
 }
 
-function generateSchemaFieldParamStringPart<P extends AnyParamObjectType>(params: P): string {
+function generateSchemaFieldParamStringPart<P extends AnyParamObjectType>(
+  params: P
+): {
+  hoisted: Record<string, string>
+  inline: string
+} {
+  const hoisted: Record<string, string> = {}
+
   const paramEntries = Object.entries(params.schema)
   if (paramEntries.length === 0) {
-    return ''
+    return { hoisted, inline: '' }
   }
 
-  return [
-    '(',
-    paramEntries
-      .map(
-        ([key, fieldDesc]) =>
-          `${key}: ${generateSchemaPart(fieldDesc.type).inline}${fieldDesc.optional ? '' : '!'}${
-            fieldDesc.optional ? ` = ${generateSchemaPart(fieldDesc.defaultValue).inline}` : ''
+  return {
+    hoisted,
+    inline: [
+      '(',
+      paramEntries
+        .map(([key, fieldDesc]) => {
+          const { hoisted: hoistedParamParts, inline: valueString } = generateSchemaPart(fieldDesc.type)
+          Object.assign(hoisted, hoistedParamParts)
+
+          const { hoisted: hoistedDefaultValueParts, inline: defaultValueString } = fieldDesc.optional
+            ? generateSchemaPart(fieldDesc.defaultValue)
+            : { hoisted: {}, inline: '' }
+          Object.assign(hoisted, hoistedDefaultValueParts)
+
+          return `${key}: ${valueString}${fieldDesc.optional ? '' : '!'}${
+            defaultValueString ? ` = ${defaultValueString}` : ''
           }`
-      )
-      .join(', '),
-    ')',
-  ].join('')
+        })
+        .join(', '),
+      ')',
+    ].join(''),
+  }
 }
 
 export function generateSchemaPart(
@@ -104,13 +121,15 @@ export function generateSchemaPart(
 
     const schemaStringParts: Array<string> = [`type ${type.typename} {`]
     fieldEntries.forEach(([key, fieldDesc]) => {
-      const { hoisted: hoistedParts, inline } = generateSchemaPart(fieldDesc.type)
+      const { hoisted: hoistedParamsParts, inline: paramListString } = fieldDesc.params
+        ? generateSchemaFieldParamStringPart(fieldDesc.params)
+        : { hoisted: {}, inline: '' }
+      Object.assign(hoisted, hoistedParamsParts)
+
+      const { hoisted: hoistedParts, inline: valueString } = generateSchemaPart(fieldDesc.type)
       Object.assign(hoisted, hoistedParts)
-      schemaStringParts.push(
-        `  ${key}${fieldDesc.params ? generateSchemaFieldParamStringPart(fieldDesc.params) : ''}: ${inline}${
-          fieldDesc.optional ? '' : '!'
-        }`
-      )
+
+      schemaStringParts.push(`  ${key}${paramListString}: ${valueString}${fieldDesc.optional ? '' : '!'}`)
     })
     schemaStringParts.push('}')
     hoisted[type.typename] = schemaStringParts.join('\n')
