@@ -13,7 +13,11 @@ export function generateQueryString<Q extends AnyObjectQueryType>(
   queryType: Q,
   op: 'query' | 'mutation' | 'subscription'
 ): string {
-  return [op, generateQueryVariableListString(queryType), generateQueryTypeString(queryType)].filter(Boolean).join(' ')
+  return joinParts(' ', [
+    op,
+    joinParts('', [queryType.name, generateQueryVariableListString(queryType)]),
+    generateQueryTypeString(queryType),
+  ])
 }
 
 function generateQueryVariableListString<Q extends AnyObjectQueryType>(queryType: Q): string {
@@ -108,4 +112,8 @@ function generateQueryTypeString<Q extends AnyQueryType>(queryType: Q): string {
   }
 
   throw new Error('Unknown query')
+}
+
+function joinParts(separator: string, parts: Array<string | null>): string {
+  return parts.filter(Boolean).join(separator)
 }

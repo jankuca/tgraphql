@@ -129,12 +129,20 @@ export class ObjectQueryType<
   resolverType: ResolverType
   schema: QuerySchema
   variables: Variables
+  name: string | null
 
-  constructor(opType: OpType, resolverType: ResolverType, schema: QuerySchema, variables: Variables) {
+  constructor(
+    opType: OpType,
+    resolverType: ResolverType,
+    schema: QuerySchema,
+    variables: Variables,
+    name?: string | null
+  ) {
     this.opType = opType
     this.resolverType = resolverType
     this.schema = schema
     this.variables = variables
+    this.name = name ?? null
   }
 
   toString(): string {
@@ -272,7 +280,8 @@ export class ObjectQueryType<
         ...this.schema,
         [key]: { query: new ScalarQueryType(fieldDesc.type), paramInputs: {} },
       },
-      this.variables
+      this.variables,
+      this.name
     )
 
     return nextQueryType
@@ -300,7 +309,8 @@ export class ObjectQueryType<
         ...this.schema,
         [key]: { query: new ScalarQueryType(fieldDesc.type), paramInputs },
       },
-      this.variables
+      this.variables,
+      this.name
     )
 
     return nextQueryType
@@ -325,7 +335,8 @@ export class ObjectQueryType<
         ...this.schema,
         [key]: { query: [new ScalarQueryType(fieldDesc.type)], paramInputs: {} },
       },
-      this.variables
+      this.variables,
+      this.name
     )
 
     return nextQueryType
@@ -357,7 +368,8 @@ export class ObjectQueryType<
         ...this.schema,
         [key]: { query: subquery, paramInputs: {} },
       },
-      this.variables
+      this.variables,
+      this.name
     )
 
     return nextQueryType
@@ -389,7 +401,8 @@ export class ObjectQueryType<
         ...this.schema,
         [key]: { query: [subquery], paramInputs: {} },
       },
-      this.variables
+      this.variables,
+      this.name
     )
 
     return nextQueryType
@@ -426,7 +439,8 @@ export class ObjectQueryType<
         ...this.schema,
         [key]: { query: subquery, paramInputs },
       },
-      this.variables
+      this.variables,
+      this.name
     )
 
     return nextQueryType
@@ -463,7 +477,8 @@ export class ObjectQueryType<
         ...this.schema,
         [key]: { query: [subquery], paramInputs },
       },
-      this.variables
+      this.variables,
+      this.name
     )
 
     return nextQueryType
@@ -511,7 +526,8 @@ export class ObjectQueryType<
         ...this.schema,
         [key]: { query: unionQuery, paramInputs: {} },
       },
-      this.variables
+      this.variables,
+      this.name
     )
 
     return nextQueryType
@@ -559,7 +575,8 @@ export class ObjectQueryType<
         ...this.schema,
         [key]: { query: [unionQuery], paramInputs: {} },
       },
-      this.variables
+      this.variables,
+      this.name
     )
 
     return nextQueryType
@@ -570,10 +587,16 @@ export class ObjectQueryType<
       ResolverType,
       Variables & { [key in K]: { type: T; optional: false; defaultValue: null } },
       QuerySchema
-    > = new ObjectQueryType(this.opType, this.resolverType, this.schema, {
-      ...this.variables,
-      [key]: { type, optional: false, defaultValue: null },
-    })
+    > = new ObjectQueryType(
+      this.opType,
+      this.resolverType,
+      this.schema,
+      {
+        ...this.variables,
+        [key]: { type, optional: false, defaultValue: null },
+      },
+      this.name
+    )
 
     return nextQueryType
   }
@@ -583,25 +606,31 @@ export class ObjectQueryType<
       ResolverType,
       Variables & { [key in K]: { type: T; optional: true; defaultValue: InputValue<T> } },
       QuerySchema
-    > = new ObjectQueryType(this.opType, this.resolverType, this.schema, {
-      ...this.variables,
-      [key]: { type, optional: true, defaultValue },
-    })
+    > = new ObjectQueryType(
+      this.opType,
+      this.resolverType,
+      this.schema,
+      {
+        ...this.variables,
+        [key]: { type, optional: true, defaultValue },
+      },
+      this.name
+    )
 
     return nextQueryType
   }
 }
 
-export function queryType<Query extends AnyObjectType>(query: Query) {
-  return new ObjectQueryType('query', query, {}, {})
+export function queryType<Query extends AnyObjectType>(query: Query, name?: string) {
+  return new ObjectQueryType('query', query, {}, {}, name ?? null)
 }
 
-export function mutationType<Mutation extends AnyObjectType>(mutation: Mutation) {
-  return new ObjectQueryType('mutation', mutation, {}, {})
+export function mutationType<Mutation extends AnyObjectType>(mutation: Mutation, name?: string) {
+  return new ObjectQueryType('mutation', mutation, {}, {}, name ?? null)
 }
 
-export function subscriptionType<Subscription extends AnyObjectType>(subscription: Subscription) {
-  return new ObjectQueryType('subscription', subscription, {}, {})
+export function subscriptionType<Subscription extends AnyObjectType>(subscription: Subscription, name?: string) {
+  return new ObjectQueryType('subscription', subscription, {}, {}, name ?? null)
 }
 
 export type AnyObjectQueryType = ObjectQueryType<
