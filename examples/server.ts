@@ -9,7 +9,7 @@ import {
   schemaType,
   unionType,
 } from '../src'
-import { SchemaObjectTypes } from '../src/types/SchemaResolvers.type'
+import { SchemaObjectTypes } from '../src/resolvers/SchemaObjectTypes.type'
 
 const DateString = scalarType('Date', 'String')
 
