@@ -4,7 +4,7 @@ import { AnySchemaType } from '../SchemaType'
 export function mergeResolvers<S extends AnySchemaType, T extends object[]>(params: {
   Schema: S
   resolvers: T
-}): MergePartialSchemaResolvers<T[number]> {
+}): MergePartialSchemaResolvers<T[number], S> {
   const { Schema, resolvers: modules } = params
 
   const queryTypename = Schema['Query']['typename']
