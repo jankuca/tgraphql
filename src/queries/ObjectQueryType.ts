@@ -146,7 +146,7 @@ export class ObjectQueryType<
   }
 
   toString(): string {
-    return generateQueryString(this, 'query')
+    return generateQueryString(this)
   }
 
   field<

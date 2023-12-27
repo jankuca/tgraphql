@@ -9,12 +9,9 @@ import { UnionQueryType } from '../queries/UnionQueryType'
 import { AnyQueryType } from '../types/AnyQueryType.type'
 import { generateSchemaPart } from './schema-generator'
 
-export function generateQueryString<Q extends AnyObjectQueryType>(
-  queryType: Q,
-  op: 'query' | 'mutation' | 'subscription'
-): string {
+export function generateQueryString<Q extends AnyObjectQueryType>(queryType: Q): string {
   return joinParts(' ', [
-    op,
+    queryType.opType,
     joinParts('', [queryType.name, generateQueryVariableListString(queryType)]),
     generateQueryTypeString(queryType),
   ])
