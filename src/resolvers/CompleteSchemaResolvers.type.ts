@@ -30,8 +30,8 @@ export type CompleteSchemaResolvers<
     >]: SchemaObjectTypes<Schema>[typename] extends AnyObjectType
       ? SchemaObjectTypeResolver<Schema, typename, Entities, Context>
       : never
-  } & // Unresolved entities are required to have dedicated resolvers.
-  {
+  } & {
+    // Unresolved entities are required to have dedicated resolvers.
     [typename in Extract<
       keyof SchemaObjectTypes<Schema>,
       AutoresolvedEntityNames<Schema, Entities>
@@ -50,27 +50,36 @@ export type CompleteSchemaResolvers<
           Context
         >
       : never
-  } & {
-    [typename in Schema['Query']['typename']]: SchemaObjectTypeResolver<Schema, typename, Entities, Context>
-  } & {
-    [typename in Schema['Mutation']['typename']]: {
-      [mutationField in keyof Schema['Mutation']['schema']]: ObjectFieldResolver<
-        never,
-        Schema['Mutation']['schema'][mutationField],
-        Entities,
-        Context
-      >
-    }
-  } & {
-    [typename in Schema['Subscription']['typename']]: {
-      [subscriptionField in keyof Schema['Subscription']['schema']]: {
-        subscribe: ObjectFieldGeneratorResolver<
-          never,
-          Schema['Subscription']['schema'][subscriptionField],
-          Entities,
-          Context
-        >
-      }
-    }
-  }
+  } & // Define Query/Mutation/Subscription resolvers only when they have fields.
+    (Schema['Query']['schema'] extends Record<never, any>
+      ? Record<never, any>
+      : {
+          [typename in Schema['Query']['typename']]: SchemaObjectTypeResolver<Schema, typename, Entities, Context>
+        }) &
+    (Schema['Mutation']['schema'] extends Record<never, any>
+      ? Record<never, any>
+      : {
+          [typename in Schema['Mutation']['typename']]: {
+            [mutationField in keyof Schema['Mutation']['schema']]: ObjectFieldResolver<
+              never,
+              Schema['Mutation']['schema'][mutationField],
+              Entities,
+              Context
+            >
+          }
+        }) &
+    (Schema['Subscription']['schema'] extends Record<never, any>
+      ? Record<never, any>
+      : {
+          [typename in Schema['Subscription']['typename']]: {
+            [subscriptionField in keyof Schema['Subscription']['schema']]: {
+              subscribe: ObjectFieldGeneratorResolver<
+                never,
+                Schema['Subscription']['schema'][subscriptionField],
+                Entities,
+                Context
+              >
+            }
+          }
+        })
 >
