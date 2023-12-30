@@ -4,6 +4,7 @@ import { EnumValueType } from '../EnumValueType'
 import { AnyInputFieldType, InputObjectType } from '../inputs/InputObjectType'
 import { Prettify } from '../types/Prettify.type'
 import { ScalarType } from '../types/ScalarType.type'
+import { InputObjectValue } from '../types/Value.type'
 
 export type AnyParamType =
   | ScalarType
@@ -13,10 +14,15 @@ export type AnyParamType =
   | [AnyParamType]
   | [AnyParamType, null]
 
-type ParamValue<T extends AnyParamType> = T extends [infer I extends AnyParamType, null]
-  ? Array<ParamValue<I>>
+export type ParamValue<T extends AnyParamType> = T extends [infer I extends AnyParamType, null]
+  ? ParamValue<
+      // NOTE: Break infinite recursion
+      Exclude<I, [AnyParamType, null]>
+    > | null
   : T extends [infer I extends AnyParamType]
   ? Array<ParamValue<I>>
+  : T extends InputObjectType<string, infer I extends Record<string, { type: AnyInputFieldType; optional: boolean }>>
+  ? InputObjectValue<I>
   : T extends EnumType<string, infer Vs>
   ? Vs[number]
   : T extends EnumValueType<infer I>
@@ -25,6 +31,10 @@ type ParamValue<T extends AnyParamType> = T extends [infer I extends AnyParamTyp
   ? number
   : T extends 'Bool'
   ? boolean
+  : T extends CustomScalarType<string, infer I>
+  ? I extends ScalarType
+    ? string
+    : I
   : T extends ScalarType
   ? string
   : T
@@ -32,7 +42,7 @@ type ParamValue<T extends AnyParamType> = T extends [infer I extends AnyParamTyp
 type ParamDescriptor<T extends { type: AnyParamType; optional: boolean }> = {
   type: T['type']
   optional: T['optional']
-  defaultValue: true extends T['optional'] ? any : ParamValue<T['type']>
+  defaultValue: ParamValue<T['type']> | undefined
 }
 
 export class ParamObjectType<S extends Record<string, ParamDescriptor<{ type: AnyParamType; optional: boolean }>>> {
@@ -44,43 +54,53 @@ export class ParamObjectType<S extends Record<string, ParamDescriptor<{ type: An
 
   field<K extends string, T extends AnyParamType>(
     key: K,
-    type: T
+    type: T,
+    defaultValue?: ParamValue<T>
   ): ParamObjectType<Prettify<S & { [k in K]: ParamDescriptor<{ type: T; optional: false }> }>> {
+    const newParam: ParamDescriptor<{ type: T; optional: false }> = { type, optional: false, defaultValue }
     return new ParamObjectType({
       ...this.schema,
-      [key]: { type, optional: false, defaultValue: null },
+      [key]: newParam,
     })
   }
 
   optionalField<K extends string, T extends AnyParamType>(
     key: K,
     type: T,
-    defaultValue: ParamValue<T>
+    defaultValue?: ParamValue<T>
   ): ParamObjectType<Prettify<S & { [k in K]: ParamDescriptor<{ type: T; optional: true }> }>> {
+    const newParam: ParamDescriptor<{ type: T; optional: true }> = { type, optional: true, defaultValue }
     return new ParamObjectType({
       ...this.schema,
-      [key]: { type, optional: true, defaultValue },
+      [key]: newParam,
     })
   }
 
   listField<K extends string, Ts extends [AnyParamType] | [AnyParamType, null]>(
     key: K,
-    itemTypes: Ts
+    itemTypes: Ts,
+    defaultValue?: ParamValue<Ts>
   ): ParamObjectType<Prettify<S & { [k in K]: ParamDescriptor<{ type: Ts; optional: false }> }>> {
+    const newParam: ParamDescriptor<{ type: Ts; optional: false }> = {
+      type: itemTypes,
+      optional: false,
+      defaultValue,
+    }
     return new ParamObjectType({
       ...this.schema,
-      [key]: { type: itemTypes, optional: false, defaultValue: null },
+      [key]: newParam,
     })
   }
 
   optionalListField<K extends string, Ts extends [AnyParamType] | [AnyParamType, null]>(
     key: K,
     itemTypes: Ts,
-    defaultValue: ParamValue<Ts>
+    defaultValue?: ParamValue<Ts>
   ): ParamObjectType<Prettify<S & { [k in K]: ParamDescriptor<{ type: Ts; optional: true }> }>> {
+    const newParam: ParamDescriptor<{ type: Ts; optional: true }> = { type: itemTypes, optional: true, defaultValue }
     return new ParamObjectType({
       ...this.schema,
-      [key]: { type: itemTypes, optional: true, defaultValue },
+      [key]: newParam,
     })
   }
 }

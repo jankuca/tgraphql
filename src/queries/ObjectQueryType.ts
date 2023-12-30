@@ -32,7 +32,7 @@ export type AnyParamInputType =
 export type VariableDescriptor<T extends { type: AnyInputValueType; optional: boolean }> = {
   type: T['type']
   optional: T['optional']
-  defaultValue: true extends T['optional'] ? any : InputValue<T['type']>
+  defaultValue: InputValue<T['type']> | undefined
 }
 
 type VariableValues<T extends Record<string, VariableDescriptor<{ type: AnyInputValueType; optional: boolean }>>> = {
@@ -582,10 +582,10 @@ export class ObjectQueryType<
     return nextQueryType
   }
 
-  variable<K extends string, T extends AnyInputValueType>(key: K, type: T) {
+  variable<K extends string, T extends AnyInputValueType>(key: K, type: T, defaultValue?: InputValue<T>) {
     const nextQueryType: ObjectQueryTypeOf<
       ResolverType,
-      Variables & { [key in K]: { type: T; optional: false; defaultValue: null } },
+      Variables & { [key in K]: { type: T; optional: false; defaultValue: InputValue<T> | undefined } },
       QuerySchema
     > = new ObjectQueryType(
       this.opType,
@@ -593,7 +593,7 @@ export class ObjectQueryType<
       this.schema,
       {
         ...this.variables,
-        [key]: { type, optional: false, defaultValue: null },
+        [key]: { type, optional: false, defaultValue },
       },
       this.name
     )
@@ -601,10 +601,10 @@ export class ObjectQueryType<
     return nextQueryType
   }
 
-  optionalVariable<K extends string, T extends AnyInputValueType>(key: K, type: T, defaultValue: InputValue<T>) {
+  optionalVariable<K extends string, T extends AnyInputValueType>(key: K, type: T, defaultValue?: InputValue<T>) {
     const nextQueryType: ObjectQueryTypeOf<
       ResolverType,
-      Variables & { [key in K]: { type: T; optional: true; defaultValue: InputValue<T> } },
+      Variables & { [key in K]: { type: T; optional: true; defaultValue: InputValue<T> | undefined } },
       QuerySchema
     > = new ObjectQueryType(
       this.opType,

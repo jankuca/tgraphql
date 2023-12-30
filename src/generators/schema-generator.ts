@@ -5,7 +5,7 @@ import { EnumType } from '../EnumType'
 import { EnumValueType } from '../EnumValueType'
 import { AnyInputFieldType, InputObjectType } from '../inputs/InputObjectType'
 import { ObjectType } from '../outputs/ObjectType'
-import { AnyParamObjectType, AnyParamType } from '../outputs/ParamObjectType'
+import { AnyParamObjectType, AnyParamType, ParamValue } from '../outputs/ParamObjectType'
 import { UnionType } from '../outputs/UnionType'
 import { AnySchemaType, SchemaType } from '../SchemaType'
 import { AnyInputValueType } from '../types/AnyInputValueType.type'
@@ -38,10 +38,8 @@ function generateSchemaFieldParamStringPart<P extends AnyParamObjectType>(
           const { hoisted: hoistedParamParts, inline: valueString } = generateSchemaPart(fieldDesc.type)
           Object.assign(hoisted, hoistedParamParts)
 
-          const { hoisted: hoistedDefaultValueParts, inline: defaultValueString } = fieldDesc.optional
-            ? generateSchemaPart(fieldDesc.defaultValue)
-            : { hoisted: {}, inline: '' }
-          Object.assign(hoisted, hoistedDefaultValueParts)
+          const { inline: defaultValueString } =
+            typeof fieldDesc.defaultValue === 'undefined' ? { inline: '' } : generateParamValue(fieldDesc.defaultValue)
 
           return `${key}: ${valueString}${fieldDesc.optional ? '' : '!'}${
             defaultValueString ? ` = ${defaultValueString}` : ''
@@ -51,6 +49,31 @@ function generateSchemaFieldParamStringPart<P extends AnyParamObjectType>(
       ')',
     ].join(''),
   }
+}
+
+export function generateParamValue(value: ParamValue<AnyParamType>): {
+  inline: string
+} {
+  if (typeof value === 'string') {
+    return { inline: `"${String(value).replace(/"/g, '\\"')}"` }
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return { inline: String(value) }
+  }
+  if (Array.isArray(value)) {
+    return { inline: `[${value.map((item) => generateParamValue(item).inline).join(', ')}]` }
+  }
+  if (value === null) {
+    return { inline: 'null' }
+  }
+  if (typeof value === 'object') {
+    return {
+      inline: `{${Object.entries(value)
+        .map(([key, fieldValue]) => `${key}: ${generateParamValue(fieldValue).inline}`)
+        .join(', ')}}`,
+    }
+  }
+  assertNever(value)
 }
 
 export function generateSchemaPart(

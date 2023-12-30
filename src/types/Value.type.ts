@@ -15,12 +15,12 @@ type ObjectValue<S extends Record<string, { type: AnyType; optional: boolean; pa
     [key in keyof S]: S[key]['optional'] extends true ? Value<S[key]['type']> | null : Value<S[key]['type']>
   }>
 
-type InputObjectValue<S extends Record<string, { type: AnyInputFieldType; optional: boolean }>> = Prettify<{
+export type InputObjectValue<S extends Record<string, { type: AnyInputFieldType; optional: boolean }>> = Prettify<{
   [key in keyof S]: S[key]['optional'] extends true ? InputValue<S[key]['type']> | null : InputValue<S[key]['type']>
 }>
 
-export type Value<T extends AnyType> = T extends [infer I extends AnyType, null]
-  ? Array<Value<I>>
+export type Value<T extends AnyType> = T extends [infer I extends Exclude<AnyType, [AnyType, null]>, null]
+  ? Value<I> | null
   : T extends [infer I extends AnyType]
   ? Array<Value<I>>
   : T extends EnumType<string, infer I>

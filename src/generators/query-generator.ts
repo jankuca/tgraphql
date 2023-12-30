@@ -7,7 +7,7 @@ import { AnyObjectQueryType, AnyParamInputType, ObjectQueryType } from '../queri
 import { ScalarQueryType } from '../queries/ScalarQueryType'
 import { UnionQueryType } from '../queries/UnionQueryType'
 import { AnyQueryType } from '../types/AnyQueryType.type'
-import { generateSchemaPart } from './schema-generator'
+import { generateParamValue, generateSchemaPart } from './schema-generator'
 
 export function generateQueryString<Q extends AnyObjectQueryType>(queryType: Q): string {
   return joinParts(' ', [
@@ -29,7 +29,7 @@ function generateQueryVariableListString<Q extends AnyObjectQueryType>(queryType
       .map(
         ([key, fieldDesc]) =>
           `$${key}: ${generateSchemaPart(fieldDesc.type).inline}${fieldDesc.optional ? '' : '!'}${
-            fieldDesc.optional ? ' = ' + generateParamInputString(fieldDesc.defaultValue) : ''
+            typeof fieldDesc.defaultValue === 'undefined' ? '' : ' = ' + generateParamValue(fieldDesc.defaultValue)
           }`
       )
       .join(', '),
