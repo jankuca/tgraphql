@@ -38,7 +38,7 @@ function generateSchemaFieldParamStringPart<P extends AnyParamObjectType>(
           const { hoisted: hoistedParamParts, inline: valueString } = generateSchemaPart(fieldDesc.type)
           Object.assign(hoisted, hoistedParamParts)
 
-          const { inline: defaultValueString } =
+          const defaultValueString =
             typeof fieldDesc.defaultValue === 'undefined' ? { inline: '' } : generateParamValue(fieldDesc.defaultValue)
 
           return `${key}: ${valueString}${fieldDesc.optional ? '' : '!'}${
@@ -51,27 +51,23 @@ function generateSchemaFieldParamStringPart<P extends AnyParamObjectType>(
   }
 }
 
-export function generateParamValue(value: ParamValue<AnyParamType>): {
-  inline: string
-} {
+export function generateParamValue(value: ParamValue<AnyParamType>): string {
   if (typeof value === 'string') {
-    return { inline: `"${String(value).replace(/"/g, '\\"')}"` }
+    return `"${String(value).replace(/"/g, '\\"')}"`
   }
   if (typeof value === 'number' || typeof value === 'boolean') {
-    return { inline: String(value) }
+    return String(value)
   }
   if (Array.isArray(value)) {
-    return { inline: `[${value.map((item) => generateParamValue(item).inline).join(', ')}]` }
+    return `[${value.map((item) => generateParamValue(item)).join(', ')}]`
   }
   if (value === null) {
-    return { inline: 'null' }
+    return 'null'
   }
   if (typeof value === 'object') {
-    return {
-      inline: `{${Object.entries(value)
-        .map(([key, fieldValue]) => `${key}: ${generateParamValue(fieldValue).inline}`)
-        .join(', ')}}`,
-    }
+    return `{${Object.entries(value)
+      .map(([key, fieldValue]) => `${key}: ${generateParamValue(fieldValue)}`)
+      .join(', ')}}`
   }
   assertNever(value)
 }
