@@ -150,9 +150,16 @@ export function createResolvers(): SchemaResolvers<typeof Schema, Entities> {
       },
     },
     Subscription: {
-      notification: () => ({ id: 'notification-id', message: 'Hello World!' }),
-      notifications: (_, params) =>
-        [{ id: 'notification-id', message: 'Hello World!' }].slice(0, params.limit ?? Infinity),
+      notification: {
+        subscribe: async function* () {
+          yield { id: 'notification-id', message: 'Hello World!' }
+        },
+      },
+      notifications: {
+        subscribe: async function* (_, params) {
+          yield [{ id: 'notification-id', message: 'Hello World!' }].slice(0, params.limit ?? Infinity)
+        },
+      },
     },
     Catchup: {
       photos: () => [{ id: 'photo-id', url: 'https://example.com/photo.jpg' }],
