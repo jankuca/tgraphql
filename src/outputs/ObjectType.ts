@@ -44,6 +44,17 @@ export class ObjectType<
     })
   }
 
+  optionalParamField<K extends string, Params extends ParamObjectType<Record<string, any>>, T extends AnyType>(
+    key: K,
+    paramBuilder: (params: ParamObjectType<Record<never, any>>) => Params,
+    type: T
+  ): ObjectType<Name, Prettify<S & { [k in K]: { type: T; optional: true; params: Params } }>> {
+    return new ObjectType(this.typename, {
+      ...this.schema,
+      [key]: { type, optional: true, params: paramBuilder(new ParamObjectType({})) },
+    })
+  }
+
   listField<K extends string, Ts extends [AnyType] | [AnyType, null]>(
     key: K,
     itemTypes: Ts
@@ -76,6 +87,21 @@ export class ObjectType<
     return new ObjectType(this.typename, {
       ...this.schema,
       [key]: { type: itemTypes, optional: true, params: null },
+    })
+  }
+
+  optionalListParamField<
+    K extends string,
+    Params extends ParamObjectType<Record<string, any>>,
+    Ts extends [AnyType] | [AnyType, null]
+  >(
+    key: K,
+    paramBuilder: (params: ParamObjectType<Record<never, any>>) => Params,
+    itemTypes: Ts
+  ): ObjectType<Name, Prettify<S & { [k in K]: { type: Ts; optional: true; params: Params } }>> {
+    return new ObjectType(this.typename, {
+      ...this.schema,
+      [key]: { type: itemTypes, optional: true, params: paramBuilder(new ParamObjectType({})) },
     })
   }
 }
