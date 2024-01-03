@@ -41,7 +41,12 @@ const Query1 = objectType('Query').listField('recentCatchups', [Catchup])
 
 const Query2 = objectType('Query').listParamField(
   'searchCatchups',
-  (params) => params.field('limit', 'Int').optionalField('page', 'Int', 1).optionalField('name', 'String', ''),
+  (params) =>
+    params
+      .field('query', 'String')
+      .field('limit', 'Int')
+      .optionalField('page', 'Int', 1)
+      .optionalField('name', 'String', ''),
   [Catchup]
 )
 

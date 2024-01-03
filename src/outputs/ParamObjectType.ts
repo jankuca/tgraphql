@@ -109,8 +109,14 @@ export type AnyParamObjectType = ParamObjectType<
   Record<string, ParamDescriptor<{ type: AnyParamType; optional: boolean }>>
 >
 
+type RequiredParamKeys<T extends Record<string, { optional: boolean }>> = {
+  [key in keyof T]: T[key]['optional'] extends true ? never : key
+}[keyof T]
+
 export type ParamValues<P extends AnyParamObjectType> = P extends ParamObjectType<infer T>
   ? {
-      [key in keyof T]: ParamValue<T[key]['type']>
+      [key in RequiredParamKeys<T>]: ParamValue<T[key]['type']>
+    } & {
+      [key in Exclude<keyof T, RequiredParamKeys<T>>]?: ParamValue<T[key]['type']> | null
     }
   : never
