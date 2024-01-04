@@ -1,3 +1,4 @@
+import { CustomScalarType } from '../CustomScalarType'
 import { EnumType } from '../EnumType'
 import { EnumValueType } from '../EnumValueType'
 import { NamedType } from '../NamedType.abstract'
@@ -5,6 +6,7 @@ import { ScalarType } from '../types/ScalarType.type'
 
 export type AnyInputFieldType =
   | ScalarType
+  | CustomScalarType<string, ScalarType>
   | EnumType<string, ReadonlyArray<string>>
   | EnumValueType<string>
   | InputObjectType<string, Record<string, { type: AnyInputFieldType; optional: boolean }>>
