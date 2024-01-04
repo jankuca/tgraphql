@@ -1,6 +1,23 @@
 {
   "name": "t-graphql",
   "version": "0.0.10",
+  "author": "Jan Kuča",
+  "description": "typed GraphQL - end-to-end type-safe GraphQL for TypeScript. Think tRPC, but GraphQL",
+  "keywords": [
+    "graphql",
+    "trpc",
+    "tgraphql",
+    "typescript",
+    "typesafe",
+    "api",
+    "schema",
+    "code-first"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jankuca/tgraphql.git"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "example": "ts-node examples/client",
