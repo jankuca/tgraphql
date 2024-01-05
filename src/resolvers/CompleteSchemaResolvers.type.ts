@@ -3,13 +3,21 @@ import { AnyUnionType, UnionTypeNames } from '../outputs/UnionType'
 import { AnySchemaType } from '../SchemaType'
 import { Prettify } from '../types/Prettify.type'
 import { Value } from '../types/Value.type'
-import { AutoresolvedEntityNames } from './AutoresolvedEntityNames.type'
+import { ResolvedValue } from './ResolvedValue.type'
 import { ObjectFieldGeneratorResolver, ObjectFieldResolver } from './Resolver.type'
 import { SchemaEntities } from './SchemaEntities.type'
 import { SchemaObjectTypeResolver } from './SchemaObjectTypeResolver.type'
 import { SchemaObjectTypes } from './SchemaObjectTypes.type'
 import { SchemaUnionTypes } from './SchemaUnionTypes.type'
 import { UnionResolver } from './UnionResolver.type'
+
+// NOTE: All object types are expected to be represented by auto-resolved subtrees by default. Any types with defined entities in the way take precedence.
+type EntitiesWithDefaults<Schema extends AnySchemaType, Entities extends SchemaEntities<AnySchemaType>> = Entities & {
+  [typename in Exclude<
+    Extract<keyof SchemaObjectTypes<Schema>, string>,
+    keyof Entities | Schema['Query']['typename'] | Schema['Mutation']['typename'] | Schema['Subscription']['typename']
+  >]: ResolvedValue<SchemaObjectTypes<Schema>[typename], Entities>
+}
 
 /**
  * Type that can be used to implement a complete set of resolvers for a schema.
@@ -19,24 +27,12 @@ export type CompleteSchemaResolvers<
   Entities extends SchemaEntities<Schema> = never,
   Context = never
 > = Prettify<
-  // Auto-resolved entities (see above) are not required to have dedicated resolvers.
   {
-    [typename in Exclude<
-      Extract<keyof SchemaObjectTypes<Schema>, string>,
-      | AutoresolvedEntityNames<Schema, Entities>
-      | Schema['Query']['typename']
-      | Schema['Mutation']['typename']
-      | Schema['Subscription']['typename']
-    >]: SchemaObjectTypes<Schema>[typename] extends AnyObjectType
-      ? SchemaObjectTypeResolver<Schema, typename, Entities, Context>
-      : never
-  } & {
-    // Unresolved entities are required to have dedicated resolvers.
     [typename in Extract<
       keyof SchemaObjectTypes<Schema>,
-      AutoresolvedEntityNames<Schema, Entities>
+      string
     >]?: SchemaObjectTypes<Schema>[typename] extends AnyObjectType
-      ? SchemaObjectTypeResolver<Schema, typename, Entities, Context>
+      ? SchemaObjectTypeResolver<Schema, typename, EntitiesWithDefaults<Schema, Entities>, Context>
       : never
   } & {
     // Unions are never considered auto-resolved.
@@ -50,11 +46,15 @@ export type CompleteSchemaResolvers<
           Context
         >
       : never
-  } & // Define Query/Mutation/Subscription resolvers only when they have fields.
-    (Schema['Query']['schema'] extends Record<never, any>
+  } & (Schema['Query']['schema'] extends Record<never, any> // Define Query/Mutation/Subscription resolvers only when they have fields.
       ? Record<never, any>
       : {
-          [typename in Schema['Query']['typename']]: SchemaObjectTypeResolver<Schema, typename, Entities, Context>
+          [typename in Schema['Query']['typename']]: SchemaObjectTypeResolver<
+            Schema,
+            typename,
+            EntitiesWithDefaults<Schema, Entities>,
+            Context
+          >
         }) &
     (Schema['Mutation']['schema'] extends Record<never, any>
       ? Record<never, any>
@@ -63,7 +63,7 @@ export type CompleteSchemaResolvers<
             [mutationField in keyof Schema['Mutation']['schema']]: ObjectFieldResolver<
               never,
               Schema['Mutation']['schema'][mutationField],
-              Entities,
+              EntitiesWithDefaults<Schema, Entities>,
               Context
             >
           }
@@ -76,7 +76,7 @@ export type CompleteSchemaResolvers<
               subscribe: ObjectFieldGeneratorResolver<
                 never,
                 Schema['Subscription']['schema'][subscriptionField],
-                Entities,
+                EntitiesWithDefaults<Schema, Entities>,
                 Context
               >
             }
