@@ -1,6 +1,6 @@
 {
   "name": "t-graphql",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "author": "Jan Kuča",
   "description": "typed GraphQL - end-to-end type-safe GraphQL for TypeScript. Think tRPC, but GraphQL",
   "keywords": [
