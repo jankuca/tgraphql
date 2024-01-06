@@ -19,6 +19,27 @@ type EntitiesWithDefaults<Schema extends AnySchemaType, Entities extends SchemaE
   >]: ResolvedValue<SchemaObjectTypes<Schema>[typename], Entities>
 }
 
+type UnresolvedSchemaObjectTypeFields<
+  Schema extends AnySchemaType,
+  T extends AnyObjectType,
+  Entities extends SchemaEntities<AnySchemaType>
+> = Exclude<keyof Value<T>, keyof EntitiesWithDefaults<Schema, Entities>[T['typename']]>
+
+export type UnresolvedSchemaObjectTypesnames<
+  Schema extends AnySchemaType,
+  Entities extends SchemaEntities<AnySchemaType>
+> = {
+  [typename in Extract<keyof SchemaObjectTypes<Schema>, string>]: UnresolvedSchemaObjectTypeFields<
+    Schema,
+    SchemaObjectTypes<Schema>[typename],
+    Entities
+  > extends infer Fields
+    ? Fields extends string
+      ? typename
+      : never
+    : never
+}[Extract<keyof SchemaObjectTypes<Schema>, string>]
+
 /**
  * Type that can be used to implement a complete set of resolvers for a schema.
  */
@@ -30,7 +51,17 @@ export type CompleteSchemaResolvers<
   {
     [typename in Extract<
       keyof SchemaObjectTypes<Schema>,
-      string
+      UnresolvedSchemaObjectTypesnames<Schema, Entities>
+    >]: SchemaObjectTypes<Schema>[typename] extends AnyObjectType
+      ? SchemaObjectTypeResolver<Schema, typename, EntitiesWithDefaults<Schema, Entities>, Context>
+      : never
+  } & {
+    [typename in Exclude<
+      Extract<keyof SchemaObjectTypes<Schema>, string>,
+      | UnresolvedSchemaObjectTypesnames<Schema, Entities>
+      | keyof Schema['Query']['schema']
+      | keyof Schema['Mutation']['schema']
+      | keyof Schema['Subscription']['schema']
     >]?: SchemaObjectTypes<Schema>[typename] extends AnyObjectType
       ? SchemaObjectTypeResolver<Schema, typename, EntitiesWithDefaults<Schema, Entities>, Context>
       : never
