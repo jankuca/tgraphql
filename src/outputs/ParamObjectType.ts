@@ -29,7 +29,7 @@ export type ParamValue<T extends AnyParamType> = T extends [infer I extends AnyP
   ? I
   : T extends 'Int'
   ? number
-  : T extends 'Bool'
+  : T extends 'Boolean'
   ? boolean
   : T extends CustomScalarType<string, infer I>
   ? I extends ScalarType

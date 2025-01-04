@@ -54,7 +54,7 @@ export const TaskConfigInput = inputType('TaskConfigInput').listField('tags', ['
 
 export const Mutation = objectType('Mutation')
   .paramField('addTask', (p) => p.field('title', 'String').optionalField('config', TaskConfigInput), 'ID')
-  .paramField('deleteTask', (p) => p.field('taskId', 'ID'), 'Bool')
+  .paramField('deleteTask', (p) => p.field('taskId', 'ID'), 'Boolean')
 ```
 
 ### Write type-safe resolvers

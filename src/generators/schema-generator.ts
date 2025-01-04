@@ -181,7 +181,7 @@ export function generateSchemaPart(
   }
 
   // ScalarType
-  if (type === 'String' || type === 'Int' || type === 'Float' || type === 'Bool' || type === 'ID') {
+  if (type === 'String' || type === 'Int' || type === 'Float' || type === 'Boolean' || type === 'ID') {
     return { hoisted: {}, inline: type }
   }
 

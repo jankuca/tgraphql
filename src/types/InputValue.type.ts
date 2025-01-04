@@ -33,7 +33,7 @@ export type InputValue<T extends AnyInputValueType | AnyInputFieldType> = T exte
   ? InputObjectValue<I>
   : T extends 'Int'
   ? number
-  : T extends 'Bool'
+  : T extends 'Boolean'
   ? boolean
   : T extends ScalarType
   ? string

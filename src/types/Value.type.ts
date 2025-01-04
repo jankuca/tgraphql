@@ -37,7 +37,7 @@ export type Value<T extends AnyType> = T extends [infer I extends Exclude<AnyTyp
   ? Value<I>
   : T extends 'Int'
   ? number
-  : T extends 'Bool'
+  : T extends 'Boolean'
   ? boolean
   : T extends ScalarType
   ? string
