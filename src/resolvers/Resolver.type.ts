@@ -56,20 +56,24 @@ export type Resolver<
   ? Prettify<
       {
         // Fields present on the entity objects are auto-resolved and do not required a dedicated resolver.
-        [key in Exclude<keyof I, N extends keyof Entities ? keyof Entities[N] : never>]: ObjectFieldResolver<
-          Parent,
-          I[key],
-          Entities,
-          Context
-        >
+        [key in Exclude<
+          keyof I,
+          N extends keyof Entities
+            ? Entities[N] extends object
+              ? AutoresolvedEntityFields<Entities[N], Entities, I>
+              : never
+            : never
+        >]: ObjectFieldResolver<Parent, I[key], Entities, Context>
       } & {
         // Fields present on the entity objects are auto-resolved but can have a dedicated (overriding) resolver.
-        [key in Extract<keyof I, N extends keyof Entities ? keyof Entities[N] : never>]?: ObjectFieldResolver<
-          Parent,
-          I[key],
-          Entities,
-          Context
-        >
+        [key in Extract<
+          keyof I,
+          N extends keyof Entities
+            ? Entities[N] extends object
+              ? AutoresolvedEntityFields<Entities[N], Entities, I>
+              : never
+            : never
+        >]?: ObjectFieldResolver<Parent, I[key], Entities, Context>
       }
     >
   : T extends CustomScalarType<string, infer I>
@@ -77,3 +81,15 @@ export type Resolver<
   : T extends ScalarType
   ? () => string
   : T
+
+export type AutoresolvedEntityFields<
+  Entity extends object,
+  Entities extends { [typename in string]?: object },
+  S extends Record<string, { type: AnyType; optional: boolean; params: AnyParamObjectType | null }>
+> = {
+  [key in keyof Entity]: key extends keyof S
+    ? ResolvedValue<S[key]['type'], Entities> extends Entity[key]
+      ? key
+      : never
+    : never
+}[keyof Entity]

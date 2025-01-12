@@ -3,12 +3,15 @@ import {
   generateSchemaString,
   inputType,
   mergeObjectTypes,
+  ObjectType,
   objectType,
   scalarType,
   SchemaResolvers,
   schemaType,
   unionType,
 } from '../src'
+import { ResolvedValue } from '../src/resolvers/ResolvedValue.type'
+import { AutoresolvedEntityFields } from '../src/resolvers/Resolver.type'
 import { SchemaObjectTypes } from '../src/resolvers/SchemaObjectTypes.type'
 
 const DateString = scalarType('Date', 'String')
@@ -30,10 +33,15 @@ const Attendee = objectType('Attendee')
 
 const Photo = objectType('Photo').field('id', 'ID').field('url', 'String')
 
+const Location = objectType('Location').field('name', 'String').field('founded_at', DateString)
+
 const Catchup = objectType('Catchup')
   .field('id', 'ID')
   .optionalField('name', 'String')
   .optionalField('author', User)
+  .field('start_date', DateString)
+  .optionalField('end_date', DateString)
+  .field('location', Location)
   .listField('attendees', [Attendee])
   .listField('photos', [Photo])
 
@@ -80,7 +88,13 @@ export const Subscription = objectType('Subscription')
 
 const Schema = schemaType().query(Query).mutation(Mutation).subscription(Subscription)
 
-type CatchupModel = { 'id': string; 'name': string | null }
+type CatchupModel = {
+  'id': string
+  'name': string | null
+  'start_date': Date
+  'end_date'?: Date | null
+  'location': { 'name': string }
+}
 type AttendeeModel = {
   'id': string
   'catchup_id': string
@@ -90,7 +104,9 @@ type AttendeeModel = {
 type UserModel = { 'id': string; 'name': string }
 
 function listRecentCatchups(params?: { limit?: number }) {
-  const catchupModels: Array<CatchupModel> = [{ 'id': 'c1', 'name': 'Catchup 1' }]
+  const catchupModels: Array<CatchupModel> = [
+    { 'id': 'c1', 'name': 'Catchup 1', 'start_date': new Date('2024-10-10'), 'location': { 'name': 'Place' } },
+  ]
   const attendeeModels: Array<Omit<AttendeeModel, 'catchup_id'> & { 'user_name': UserModel['name'] }> = [
     { 'id': 'a1', 'user_id': 'u1', 'access_level': 'owner', 'user_name': 'User 1' },
     { 'id': 'a2', 'user_id': 'u2', 'access_level': 'viewer', 'user_name': 'User 2' },
@@ -167,6 +183,8 @@ export function createResolvers(): SchemaResolvers<typeof Schema, Entities> {
       },
     },
     Catchup: {
+      start_date: (catchup) => catchup['start_date'].toISOString(),
+      end_date: (catchup) => catchup['end_date']?.toISOString() ?? null,
       photos: () => [{ id: 'photo-id', url: 'https://example.com/photo.jpg' }],
       author: () => {
         const attendeeModels: Array<Omit<AttendeeModel, 'catchup_id'> & { 'user_name': UserModel['name'] }> = [
