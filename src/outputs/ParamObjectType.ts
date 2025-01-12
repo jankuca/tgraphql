@@ -27,7 +27,7 @@ export type ParamValue<T extends AnyParamType> = T extends [infer I extends AnyP
   ? Vs[number]
   : T extends EnumValueType<infer I>
   ? I
-  : T extends 'Int'
+  : T extends 'Int' | 'Float'
   ? number
   : T extends 'Boolean'
   ? boolean

@@ -31,7 +31,7 @@ export type InputValue<T extends AnyInputValueType | AnyInputFieldType> = T exte
   ? InputValue<I>
   : T extends InputObjectType<string, infer I extends Record<string, { type: AnyInputFieldType; optional: boolean }>>
   ? InputObjectValue<I>
-  : T extends 'Int'
+  : T extends 'Int' | 'Float'
   ? number
   : T extends 'Boolean'
   ? boolean
