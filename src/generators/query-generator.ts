@@ -3,6 +3,7 @@ import assertNever from 'assert-never'
 import { EnumValueType } from '../EnumValueType'
 import { InputObjectType } from '../inputs/InputObjectType'
 import { VariableInput } from '../inputs/VariableInput'
+import { AnyObjectFragmentQueryType } from '../queries/ObjectFragmentQueryType'
 import { AnyObjectQueryType, AnyParamInputType, ObjectQueryType } from '../queries/ObjectQueryType'
 import { ScalarQueryType } from '../queries/ScalarQueryType'
 import { UnionQueryType } from '../queries/UnionQueryType'
@@ -10,11 +11,16 @@ import { AnyQueryType } from '../types/AnyQueryType.type'
 import { generateParamValue, generateSchemaPart } from './schema-generator'
 
 export function generateQueryString<Q extends AnyObjectQueryType>(queryType: Q): string {
-  return joinParts(' ', [
-    queryType.opType,
-    joinParts('', [queryType.name, generateQueryVariableListString(queryType)]),
-    generateQueryTypeString(queryType),
-  ])
+  const { hoisted, inline } = generateQueryTypeString(queryType)
+
+  return [
+    joinParts(' ', [
+      queryType.opType,
+      joinParts('', [queryType.name, generateQueryVariableListString(queryType)]),
+      inline,
+    ]),
+    ...Object.values(hoisted),
+  ].join('\n\n')
 }
 
 function generateQueryVariableListString<Q extends AnyObjectQueryType>(queryType: Q): string {
@@ -79,36 +85,76 @@ function generateQueryFieldParamInputListString<P extends Record<string, AnyPara
   ].join('')
 }
 
-function generateQueryTypeString<Q extends AnyQueryType>(queryType: Q): string {
+function generateQueryTypeString<Q extends AnyQueryType>(
+  queryType: Q
+): { inline: string; hoisted: Record<string, string> } {
   if (Array.isArray(queryType)) {
     return generateQueryTypeString(queryType[0])
   }
 
   if (queryType instanceof UnionQueryType) {
-    const fragments = Object.entries(queryType.queries).map(([typename, subqueryType]) => {
-      return [`... on ${typename}`, generateQueryTypeString(subqueryType).trim()].join(' ')
+    const hoisted = {}
+
+    const unionCases = Object.entries(queryType.queries).map(([typename, subqueryType]) => {
+      const { hoisted: hoistedParts, inline } = generateQueryTypeString(subqueryType)
+      Object.assign(hoisted, hoistedParts)
+      return [`... on ${typename}`, inline.trim()].join(' ')
     })
 
-    return ['{', ...fragments.map((fragment) => fragment.replace(/^/gm, '  ')), '}'].join('\n')
+    return { hoisted, inline: ['{', ...unionCases.map((unionCase) => unionCase.replace(/^/gm, '  ')), '}'].join('\n') }
   }
 
   if (queryType instanceof ObjectQueryType) {
-    const fields = Object.entries(queryType.schema).map(([key, subqueryType]) => {
-      return `${key}${generateQueryFieldParamInputListString(subqueryType.paramInputs)} ${generateQueryTypeString(
-        subqueryType.query
-      )
-        .replace(/^/gm, '  ')
-        .trim()}`.trim()
-    })
-
-    return ['{', ...fields.map((key) => `  ${key}`), '}'].join('\n')
+    return generateObjectQueryTypeString(queryType)
   }
 
   if (queryType instanceof ScalarQueryType) {
-    return ''
+    return { hoisted: {}, inline: '' }
   }
 
   throw new Error('Unknown query')
+}
+
+function generateQueryFragmentTypeString<F extends AnyObjectFragmentQueryType>(
+  fragmentType: F
+): { inline: string; hoisted: Record<string, string> } {
+  const { hoisted, inline } = generateObjectQueryTypeString(fragmentType.query)
+
+  return {
+    hoisted: {
+      ...hoisted,
+      [fragmentType.name]: ['fragment', fragmentType.name, 'on', fragmentType.query.resolverType.typename, inline].join(
+        ' '
+      ),
+    },
+    inline: `...${fragmentType.name}`,
+  }
+}
+
+function generateObjectQueryTypeString<Q extends AnyObjectQueryType>(
+  queryType: Q
+): { hoisted: Record<string, string>; inline: string } {
+  const hoisted = {}
+
+  const fragments = queryType.fragments.map((fragment) => {
+    const { hoisted: hoistedParts, inline } = generateQueryFragmentTypeString(fragment)
+    Object.assign(hoisted, hoistedParts)
+    return inline
+  })
+
+  const fields = Object.entries(queryType.schema).map(([key, subqueryType]) => {
+    const { hoisted: hoistedParts, inline } = generateQueryTypeString(subqueryType.query)
+    Object.assign(hoisted, hoistedParts)
+
+    return `${key}${generateQueryFieldParamInputListString(subqueryType.paramInputs)} ${inline
+      .replace(/^/gm, '  ')
+      .trim()}`.trim()
+  })
+
+  return {
+    hoisted,
+    inline: ['{', ...fragments, ...fields.map((key) => `  ${key}`), '}'].join('\n'),
+  }
 }
 
 function joinParts(separator: string, parts: Array<string | null>): string {
