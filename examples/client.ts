@@ -1,6 +1,9 @@
+/* eslint react-hooks/rules-of-hooks: 0 */
+
 import { mutationType, queryType, subscriptionType, useMutation, useQuery, useSubscription, variable } from '../src'
+import { fragmentType } from '../src/queries/ObjectFragmentQueryType'
 import { QueryVariables } from '../src/types/QueryVariables.type'
-import { AddAttendeeBatchInput, AddAttendeeInput, Mutation, Query, Subscription } from './server'
+import { AddAttendeeBatchInput, AddAttendeeInput, Attendee, Catchup, Mutation, Query, Subscription } from './server'
 
 try {
   const ListCatchups = queryType(Query)
@@ -41,10 +44,32 @@ try {
 }
 
 try {
+  const CatchupFragment = fragmentType(Catchup, 'CatchupFragment')
+    .field('id')
+    .field('name')
+    .field('author', (author) => author.field('name'))
+
+  const AttendeeFragment = fragmentType(Attendee, 'AttendeeFragment').field('access_level')
+
+  const CatchupAttendeeListFragment = fragmentType(Catchup, 'CatchupAttendeeListFragment').field(
+    'attendees',
+    (attendee) => attendee.field('access_level').fragment(AttendeeFragment)
+  )
+
+  const ListCatchupsWithFragments = queryType(Query).listParamField('recentCatchups', {}, (catchup) =>
+    catchup.field('end_date').fragment(CatchupFragment).fragment(CatchupAttendeeListFragment)
+  )
+
+  useQuery(ListCatchupsWithFragments).data.recentCatchups[0].name
+} catch (err) {
+  console.error('err:', err)
+}
+
+try {
   const SearchCatchups = queryType(Query)
     .variable('s', 'String')
     .optionalVariable('lim', 'Int', 5)
-    .listParamField('searchCatchups', { 'name': variable('s'), 'limit': variable('lim') }, (catchup) =>
+    .listParamField('searchCatchups', { 'query': '', 'name': variable('s'), 'limit': variable('lim') }, (catchup) =>
       catchup.field('id').field('name')
     )
 

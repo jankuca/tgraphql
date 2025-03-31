@@ -21,7 +21,7 @@ const PseudoUser = objectType('PseudoUser').field('id', 'ID').field('name', 'Str
 
 const AnyUser = unionType('AnyUser', User, PseudoUser)
 
-const Attendee = objectType('Attendee')
+export const Attendee = objectType('Attendee')
   .field('id', 'ID')
   .field('user', AnyUser)
   .optionalField('maybe_user', AnyUser)
@@ -32,7 +32,7 @@ const Photo = objectType('Photo').field('id', 'ID').field('url', 'String')
 
 const Location = objectType('Location').field('name', 'String').field('founded_at', DateString)
 
-const Catchup = objectType('Catchup')
+export const Catchup = objectType('Catchup')
   .field('id', 'ID')
   .optionalField('name', 'String')
   .optionalField('author', User)
