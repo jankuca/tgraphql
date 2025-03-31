@@ -3,15 +3,12 @@ import {
   generateSchemaString,
   inputType,
   mergeObjectTypes,
-  ObjectType,
   objectType,
   scalarType,
   SchemaResolvers,
   schemaType,
   unionType,
 } from '../src'
-import { ResolvedValue } from '../src/resolvers/ResolvedValue.type'
-import { AutoresolvedEntityFields } from '../src/resolvers/Resolver.type'
 import { SchemaObjectTypes } from '../src/resolvers/SchemaObjectTypes.type'
 
 const DateString = scalarType('Date', 'String')
