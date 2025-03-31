@@ -6,7 +6,6 @@ import { AnyUnionQueryType, UnionQueryType } from '../queries/UnionQueryType'
 import { AnyQueryType } from './AnyQueryType.type'
 import { AnyType } from './AnyType.type'
 import { ObjectUnionToObjectIntersection } from './ObjectUnionToObjectIntersection.type'
-import { Prettify } from './Prettify.type'
 import { Value } from './Value.type'
 
 export type QueryResult<Q extends AnyQueryType> = Q extends [infer T extends AnyObjectQueryType]
@@ -27,17 +26,15 @@ export type QueryResult<Q extends AnyQueryType> = Q extends [infer T extends Any
       any,
       any
     >
-  ? Prettify<
-      {
-        [K in keyof QueryFieldSchema]:
-          | QueryResult<QueryFieldSchema[K]['query']>
-          | (K extends keyof ResolverType['schema']
-              ? ResolverType['schema'][K]['optional'] extends true
-                ? null
-                : never
-              : never)
-      } & FragmentArrayResult<QueryFragments>
-    >
+  ? {
+      [K in keyof QueryFieldSchema]:
+        | QueryResult<QueryFieldSchema[K]['query']>
+        | (K extends keyof ResolverType['schema']
+            ? ResolverType['schema'][K]['optional'] extends true
+              ? null
+              : never
+            : never)
+    } & FragmentArrayResult<QueryFragments>
   : Q extends [infer T extends ScalarQueryType<AnyType>]
   ? Array<QueryResult<T>>
   : Q extends ScalarQueryType<infer T>
