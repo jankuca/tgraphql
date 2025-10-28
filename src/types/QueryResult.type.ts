@@ -8,6 +8,10 @@ import { AnyType } from './AnyType.type'
 import { ObjectUnionToObjectIntersection } from './ObjectUnionToObjectIntersection.type'
 import { Value } from './Value.type'
 
+// Depth counter for tail-recursion optimization
+// We use a tuple length to track depth, limiting recursion to prevent excessive type instantiation
+type Prev = [never, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, ...0[]]
+
 // Pre-compute optional field keys from the resolver schema to avoid repeated conditional checks
 type OptionalFieldKeys<ResolverSchema extends Record<string, { optional: boolean }>> = {
   [K in keyof ResolverSchema]: ResolverSchema[K]['optional'] extends true ? K : never
@@ -18,12 +22,15 @@ type AddNullIfOptional<K extends PropertyKey, OptionalKeys, ResultType> = K exte
   ? ResultType | null
   : ResultType
 
-export type QueryResult<Q extends AnyQueryType> = Q extends [infer T extends AnyObjectQueryType]
-  ? Array<QueryResult<T>>
+// Internal depth-limited QueryResult implementation
+type QueryResultImpl<Q extends AnyQueryType, Depth extends number> = [Depth] extends [never]
+  ? any // Depth limit reached, fall back to any
+  : Q extends [infer T extends AnyObjectQueryType]
+  ? Array<QueryResultImpl<T, Prev[Depth]>>
   : Q extends [infer T extends AnyUnionQueryType]
-  ? Array<QueryResult<T>>
+  ? Array<QueryResultImpl<T, Prev[Depth]>>
   : Q extends UnionQueryType<any, infer SubQ extends UnionSubqueries<AnyUnionType, any>>
-  ? QueryResult<SubQ[keyof SubQ]>
+  ? QueryResultImpl<SubQ[keyof SubQ], Prev[Depth]>
   : Q extends ObjectQueryType<
       infer ResolverType,
       any,
@@ -40,17 +47,26 @@ export type QueryResult<Q extends AnyQueryType> = Q extends [infer T extends Any
       [K in keyof QueryFieldSchema]: AddNullIfOptional<
         K,
         OptionalFieldKeys<ResolverType['schema']>,
-        QueryResult<QueryFieldSchema[K]['query']>
+        QueryResultImpl<QueryFieldSchema[K]['query'], Prev[Depth]>
       >
-    } & FragmentArrayResult<QueryFragments>
+    } & FragmentArrayResultImpl<QueryFragments, Prev[Depth]>
   : Q extends [infer T extends ScalarQueryType<AnyType>]
-  ? Array<QueryResult<T>>
+  ? Array<QueryResultImpl<T, Prev[Depth]>>
   : Q extends ScalarQueryType<infer T>
   ? Value<T>
   : never
 
-export type FragmentResult<F extends AnyObjectFragmentQueryType> = QueryResult<F['query']>
+// Public QueryResult type with default depth limit of 20
+export type QueryResult<Q extends AnyQueryType> = QueryResultImpl<Q, 20>
 
-export type FragmentArrayResult<T> = T extends Array<infer F extends AnyObjectFragmentQueryType>
-  ? ObjectUnionToObjectIntersection<FragmentResult<F>>
+// Internal depth-limited fragment result implementations
+type FragmentResultImpl<F extends AnyObjectFragmentQueryType, Depth extends number> = QueryResultImpl<F['query'], Depth>
+
+type FragmentArrayResultImpl<T, Depth extends number> = T extends Array<infer F extends AnyObjectFragmentQueryType>
+  ? ObjectUnionToObjectIntersection<FragmentResultImpl<F, Depth>>
   : never
+
+// Public fragment result types
+export type FragmentResult<F extends AnyObjectFragmentQueryType> = FragmentResultImpl<F, 20>
+
+export type FragmentArrayResult<T> = FragmentArrayResultImpl<T, 20>
