@@ -61,7 +61,7 @@ export class ParamObjectType<S extends Record<string, ParamDescriptor<{ type: An
     return new ParamObjectType({
       ...this.schema,
       [key]: newParam,
-    })
+    } as any)
   }
 
   optionalField<K extends string, T extends AnyParamType>(
@@ -73,7 +73,7 @@ export class ParamObjectType<S extends Record<string, ParamDescriptor<{ type: An
     return new ParamObjectType({
       ...this.schema,
       [key]: newParam,
-    })
+    } as any)
   }
 
   listField<K extends string, Ts extends [AnyParamType] | [AnyParamType, null]>(
@@ -89,7 +89,7 @@ export class ParamObjectType<S extends Record<string, ParamDescriptor<{ type: An
     return new ParamObjectType({
       ...this.schema,
       [key]: newParam,
-    })
+    } as any)
   }
 
   optionalListField<K extends string, Ts extends [AnyParamType] | [AnyParamType, null]>(
@@ -101,7 +101,7 @@ export class ParamObjectType<S extends Record<string, ParamDescriptor<{ type: An
     return new ParamObjectType({
       ...this.schema,
       [key]: newParam,
-    })
+    } as any)
   }
 }
 

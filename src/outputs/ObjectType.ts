@@ -20,7 +20,7 @@ export class ObjectType<
     return new ObjectType(this.typename, {
       ...this.schema,
       [key]: { type, optional: false, params: null },
-    })
+    } as any)
   }
 
   paramField<K extends string, Params extends ParamObjectType<Record<string, any>>, T extends AnyType>(
@@ -31,7 +31,7 @@ export class ObjectType<
     return new ObjectType(this.typename, {
       ...this.schema,
       [key]: { type, optional: false, params: paramBuilder(new ParamObjectType({})) },
-    })
+    } as any)
   }
 
   optionalField<K extends string, T extends AnyType>(
@@ -41,7 +41,7 @@ export class ObjectType<
     return new ObjectType(this.typename, {
       ...this.schema,
       [key]: { type, optional: true, params: null },
-    })
+    } as any)
   }
 
   optionalParamField<K extends string, Params extends ParamObjectType<Record<string, any>>, T extends AnyType>(
@@ -52,7 +52,7 @@ export class ObjectType<
     return new ObjectType(this.typename, {
       ...this.schema,
       [key]: { type, optional: true, params: paramBuilder(new ParamObjectType({})) },
-    })
+    } as any)
   }
 
   listField<K extends string, Ts extends [AnyType] | [AnyType, null]>(
@@ -62,7 +62,7 @@ export class ObjectType<
     return new ObjectType(this.typename, {
       ...this.schema,
       [key]: { type: itemTypes, optional: false, params: null },
-    })
+    } as any)
   }
 
   listParamField<
@@ -77,7 +77,7 @@ export class ObjectType<
     return new ObjectType(this.typename, {
       ...this.schema,
       [key]: { type: itemTypes, optional: false, params: paramBuilder(new ParamObjectType({})) },
-    })
+    } as any)
   }
 
   optionalListField<K extends string, Ts extends [AnyType] | [AnyType, null]>(
@@ -87,7 +87,7 @@ export class ObjectType<
     return new ObjectType(this.typename, {
       ...this.schema,
       [key]: { type: itemTypes, optional: true, params: null },
-    })
+    } as any)
   }
 
   optionalListParamField<
@@ -102,7 +102,7 @@ export class ObjectType<
     return new ObjectType(this.typename, {
       ...this.schema,
       [key]: { type: itemTypes, optional: true, params: paramBuilder(new ParamObjectType({})) },
-    })
+    } as any)
   }
 }
 

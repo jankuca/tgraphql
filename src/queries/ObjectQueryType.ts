@@ -309,7 +309,7 @@ export class ObjectQueryType<
       {
         ...this.schema,
         [key]: { query: new ScalarQueryType(fieldDesc.type), paramInputs: {} },
-      },
+      } as any,
       this.fragments,
       this.variables,
       this.name
@@ -340,7 +340,7 @@ export class ObjectQueryType<
       {
         ...this.schema,
         [key]: { query: new ScalarQueryType(fieldDesc.type), paramInputs },
-      },
+      } as any,
       this.fragments,
       this.variables,
       this.name
@@ -368,7 +368,7 @@ export class ObjectQueryType<
       {
         ...this.schema,
         [key]: { query: [new ScalarQueryType(fieldDesc.type)], paramInputs: {} },
-      },
+      } as any,
       this.fragments,
       this.variables,
       this.name
@@ -404,7 +404,7 @@ export class ObjectQueryType<
       {
         ...this.schema,
         [key]: { query: subquery, paramInputs: {} },
-      },
+      } as any,
       this.fragments,
       this.variables,
       this.name
@@ -443,7 +443,7 @@ export class ObjectQueryType<
       {
         ...this.schema,
         [key]: { query: [subquery], paramInputs: {} },
-      },
+      } as any,
       this.fragments,
       this.variables,
       this.name
@@ -484,7 +484,7 @@ export class ObjectQueryType<
       {
         ...this.schema,
         [key]: { query: subquery, paramInputs },
-      },
+      } as any,
       this.fragments,
       this.variables,
       this.name
@@ -525,7 +525,7 @@ export class ObjectQueryType<
       {
         ...this.schema,
         [key]: { query: [subquery], paramInputs },
-      },
+      } as any,
       this.fragments,
       this.variables,
       this.name
@@ -557,7 +557,6 @@ export class ObjectQueryType<
       ) as UnionSubqueries<Union, SubqueryFactories>
     )
 
-    // @ts-expect-error
     const nextQueryType: ObjectQueryTypeOf<
       ResolverType,
       Variables,
@@ -576,7 +575,7 @@ export class ObjectQueryType<
       {
         ...this.schema,
         [key]: { query: unionQuery, paramInputs: {} },
-      },
+      } as any,
       this.fragments,
       this.variables,
       this.name
@@ -608,7 +607,6 @@ export class ObjectQueryType<
       ) as UnionSubqueries<Union, SubqueryFactories>
     )
 
-    // @ts-expect-error
     const nextQueryType: ObjectQueryTypeOf<
       ResolverType,
       Variables,
@@ -626,7 +624,7 @@ export class ObjectQueryType<
       {
         ...this.schema,
         [key]: { query: [unionQuery], paramInputs: {} },
-      },
+      } as any,
       this.fragments,
       this.variables,
       this.name
