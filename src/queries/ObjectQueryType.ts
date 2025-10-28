@@ -298,7 +298,7 @@ export class ObjectQueryType<
       {
         ...this.schema,
         [key]: { query: new ScalarQueryType(fieldDesc.type), paramInputs: {} },
-      } as any,
+      },
       this.fragments,
       this.variables,
       this.name
@@ -327,7 +327,7 @@ export class ObjectQueryType<
       {
         ...this.schema,
         [key]: { query: new ScalarQueryType(fieldDesc.type), paramInputs },
-      } as any,
+      },
       this.fragments,
       this.variables,
       this.name
@@ -353,7 +353,7 @@ export class ObjectQueryType<
       {
         ...this.schema,
         [key]: { query: [new ScalarQueryType(fieldDesc.type)], paramInputs: {} },
-      } as any,
+      },
       this.fragments,
       this.variables,
       this.name
@@ -387,7 +387,7 @@ export class ObjectQueryType<
       {
         ...this.schema,
         [key]: { query: subquery, paramInputs: {} },
-      } as any,
+      },
       this.fragments,
       this.variables,
       this.name
@@ -424,7 +424,7 @@ export class ObjectQueryType<
       {
         ...this.schema,
         [key]: { query: [subquery], paramInputs: {} },
-      } as any,
+      },
       this.fragments,
       this.variables,
       this.name
@@ -463,7 +463,7 @@ export class ObjectQueryType<
       {
         ...this.schema,
         [key]: { query: subquery, paramInputs },
-      } as any,
+      },
       this.fragments,
       this.variables,
       this.name
@@ -502,7 +502,7 @@ export class ObjectQueryType<
       {
         ...this.schema,
         [key]: { query: [subquery], paramInputs },
-      } as any,
+      },
       this.fragments,
       this.variables,
       this.name
@@ -532,7 +532,7 @@ export class ObjectQueryType<
           return [objectType.typename, makeSubquery(emptySubquery)]
         })
       ) as UnionSubqueries<Union, SubqueryFactories>
-    )
+    ) as UnionQueryType<Union, UnionSubqueries<Union, SubqueryFactories>>
 
     const nextQueryType: ObjectQueryTypeOf<
       ResolverType,
@@ -550,7 +550,7 @@ export class ObjectQueryType<
       {
         ...this.schema,
         [key]: { query: unionQuery, paramInputs: {} },
-      } as any,
+      },
       this.fragments,
       this.variables,
       this.name
@@ -580,7 +580,7 @@ export class ObjectQueryType<
           return [objectType.typename, makeSubquery(emptySubquery)]
         })
       ) as UnionSubqueries<Union, SubqueryFactories>
-    )
+    ) as UnionQueryType<Union, UnionSubqueries<Union, SubqueryFactories>>
 
     const nextQueryType: ObjectQueryTypeOf<
       ResolverType,
@@ -598,7 +598,7 @@ export class ObjectQueryType<
       {
         ...this.schema,
         [key]: { query: [unionQuery], paramInputs: {} },
-      } as any,
+      },
       this.fragments,
       this.variables,
       this.name
