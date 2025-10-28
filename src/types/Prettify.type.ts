@@ -1,5 +1,2 @@
-type Identity<T extends object> = T
-
-export type Prettify<T extends object> = Identity<{
-  [k in keyof T]: T[k]
-}>
+// Flatten intersection types to prevent deep nesting
+export type Prettify<T extends object> = T extends infer U ? { [K in keyof U]: U[K] } : never

@@ -11,7 +11,6 @@ import {
   UnionListResolvers,
   UnionResolvers,
 } from '../types/object-field-resolvers.type'
-import { Prettify } from '../types/Prettify.type'
 import {
   AnyParamInputType,
   ObjectQueryType,
@@ -79,7 +78,7 @@ export class ObjectFragmentQueryType<
     makeSubquery: (subquery: ObjectQueryTypeOf<ObjectListFields[K]['type'][0], {}, {}, []>) => ListSubquery
   ): ObjectFragmentQueryTypeOf<
     ResolverType,
-    Prettify<QueryFieldSchema & { [key in K]: { query: [ListSubquery]; paramInputs: Record<never, any> } }>,
+    QueryFieldSchema & { [key in K]: { query: [ListSubquery]; paramInputs: Record<never, any> } },
     QueryFragments
   >
 
@@ -93,7 +92,7 @@ export class ObjectFragmentQueryType<
     makeSubquery: (subquery: ObjectQueryTypeOf<ObjectFields[K]['type'], {}, {}, []>) => ObjectSubquery
   ): ObjectFragmentQueryTypeOf<
     ResolverType,
-    Prettify<QueryFieldSchema & { [key in K]: { query: ObjectSubquery; paramInputs: Record<never, any> } }>,
+    QueryFieldSchema & { [key in K]: { query: ObjectSubquery; paramInputs: Record<never, any> } },
     QueryFragments
   >
 
@@ -106,14 +105,12 @@ export class ObjectFragmentQueryType<
     makeSubqueries: SubqueryFactories
   ): ObjectFragmentQueryTypeOf<
     ResolverType,
-    Prettify<
-      QueryFieldSchema & {
-        [key in K]: {
-          query: [UnionQueryType<Union, UnionSubqueries<Union, SubqueryFactories>>]
-          paramInputs: Record<never, any>
-        }
+    QueryFieldSchema & {
+      [key in K]: {
+        query: [UnionQueryType<Union, UnionSubqueries<Union, SubqueryFactories>>]
+        paramInputs: Record<never, any>
       }
-    >,
+    },
     QueryFragments
   >
 
@@ -126,14 +123,12 @@ export class ObjectFragmentQueryType<
     makeSubqueries: SubqueryFactories
   ): ObjectFragmentQueryTypeOf<
     ResolverType,
-    Prettify<
-      QueryFieldSchema & {
-        [key in K]: {
-          query: UnionQueryType<Union, UnionSubqueries<Union, SubqueryFactories>>
-          paramInputs: Record<never, any>
-        }
+    QueryFieldSchema & {
+      [key in K]: {
+        query: UnionQueryType<Union, UnionSubqueries<Union, SubqueryFactories>>
+        paramInputs: Record<never, any>
       }
-    >,
+    },
     QueryFragments
   >
 
@@ -142,11 +137,9 @@ export class ObjectFragmentQueryType<
     makeSubquery?: undefined
   ): ObjectFragmentQueryTypeOf<
     ResolverType,
-    Prettify<
-      QueryFieldSchema & {
-        [key in K]: { query: [ScalarQueryType<ListFields[K]['type'][0]>]; paramInputs: Record<never, any> }
-      }
-    >,
+    QueryFieldSchema & {
+      [key in K]: { query: [ScalarQueryType<ListFields[K]['type'][0]>]; paramInputs: Record<never, any> }
+    },
     QueryFragments
   >
 
@@ -155,9 +148,7 @@ export class ObjectFragmentQueryType<
     makeSubquery?: undefined
   ): ObjectFragmentQueryTypeOf<
     ResolverType,
-    Prettify<
-      QueryFieldSchema & { [key in K]: { query: ScalarQueryType<Fields[K]['type']>; paramInputs: Record<never, any> } }
-    >,
+    QueryFieldSchema & { [key in K]: { query: ScalarQueryType<Fields[K]['type']>; paramInputs: Record<never, any> } },
     QueryFragments
   >
 
@@ -170,11 +161,9 @@ export class ObjectFragmentQueryType<
     paramInputs: Params
   ): ObjectFragmentQueryTypeOf<
     ResolverType,
-    Prettify<
-      QueryFieldSchema & {
-        [key in K]: { query: ScalarQueryType<Fields[K]['type']>; paramInputs: Params }
-      }
-    >,
+    QueryFieldSchema & {
+      [key in K]: { query: ScalarQueryType<Fields[K]['type']>; paramInputs: Params }
+    },
     QueryFragments
   > {
     return new ObjectFragmentQueryType(
@@ -196,7 +185,7 @@ export class ObjectFragmentQueryType<
     makeSubquery: (subquery: ObjectQueryTypeOf<ObjectFields[K]['type'], {}, {}, []>) => Subquery
   ): ObjectFragmentQueryTypeOf<
     ResolverType,
-    Prettify<QueryFieldSchema & { [key in K]: { query: Subquery; paramInputs: Params } }>,
+    QueryFieldSchema & { [key in K]: { query: Subquery; paramInputs: Params } },
     QueryFragments
   > {
     return new ObjectFragmentQueryType(
@@ -218,7 +207,7 @@ export class ObjectFragmentQueryType<
     makeSubquery: (subquery: ObjectQueryTypeOf<ObjectListFields[K]['type'][0], {}, {}, []>) => Subquery
   ): ObjectFragmentQueryTypeOf<
     ResolverType,
-    Prettify<QueryFieldSchema & { [key in K]: { query: [Subquery]; paramInputs: Params } }>,
+    QueryFieldSchema & { [key in K]: { query: [Subquery]; paramInputs: Params } },
     QueryFragments
   > {
     return new ObjectFragmentQueryType(

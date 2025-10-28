@@ -2,7 +2,6 @@ import { CustomScalarType } from '../CustomScalarType'
 import { EnumType } from '../EnumType'
 import { EnumValueType } from '../EnumValueType'
 import { AnyInputFieldType, InputObjectType } from '../inputs/InputObjectType'
-import { Prettify } from '../types/Prettify.type'
 import { ScalarType } from '../types/ScalarType.type'
 import { InputObjectValue } from '../types/Value.type'
 
@@ -56,7 +55,7 @@ export class ParamObjectType<S extends Record<string, ParamDescriptor<{ type: An
     key: K,
     type: T,
     defaultValue?: ParamValue<T>
-  ): ParamObjectType<Prettify<S & { [k in K]: ParamDescriptor<{ type: T; optional: false }> }>> {
+  ): ParamObjectType<S & { [k in K]: ParamDescriptor<{ type: T; optional: false }> }> {
     const newParam: ParamDescriptor<{ type: T; optional: false }> = { type, optional: false, defaultValue }
     return new ParamObjectType({
       ...this.schema,
@@ -68,7 +67,7 @@ export class ParamObjectType<S extends Record<string, ParamDescriptor<{ type: An
     key: K,
     type: T,
     defaultValue?: ParamValue<T>
-  ): ParamObjectType<Prettify<S & { [k in K]: ParamDescriptor<{ type: T; optional: true }> }>> {
+  ): ParamObjectType<S & { [k in K]: ParamDescriptor<{ type: T; optional: true }> }> {
     const newParam: ParamDescriptor<{ type: T; optional: true }> = { type, optional: true, defaultValue }
     return new ParamObjectType({
       ...this.schema,
@@ -80,7 +79,7 @@ export class ParamObjectType<S extends Record<string, ParamDescriptor<{ type: An
     key: K,
     itemTypes: Ts,
     defaultValue?: ParamValue<Ts>
-  ): ParamObjectType<Prettify<S & { [k in K]: ParamDescriptor<{ type: Ts; optional: false }> }>> {
+  ): ParamObjectType<S & { [k in K]: ParamDescriptor<{ type: Ts; optional: false }> }> {
     const newParam: ParamDescriptor<{ type: Ts; optional: false }> = {
       type: itemTypes,
       optional: false,
@@ -96,7 +95,7 @@ export class ParamObjectType<S extends Record<string, ParamDescriptor<{ type: An
     key: K,
     itemTypes: Ts,
     defaultValue?: ParamValue<Ts>
-  ): ParamObjectType<Prettify<S & { [k in K]: ParamDescriptor<{ type: Ts; optional: true }> }>> {
+  ): ParamObjectType<S & { [k in K]: ParamDescriptor<{ type: Ts; optional: true }> }> {
     const newParam: ParamDescriptor<{ type: Ts; optional: true }> = { type: itemTypes, optional: true, defaultValue }
     return new ParamObjectType({
       ...this.schema,
