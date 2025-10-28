@@ -344,7 +344,7 @@ export class ObjectQueryType<
       ResolverType,
       Variables,
       QueryFieldSchema & {
-        [key in K]: { query: [ScalarQueryType<ListFields[K]['type']>]; paramInputs: Record<never, any> }
+        [key in K]: { query: [ScalarQueryType<ListFields[K]['type'][0]>]; paramInputs: Record<never, any> }
       },
       QueryFragments
     > = new ObjectQueryType(
@@ -352,7 +352,7 @@ export class ObjectQueryType<
       this.resolverType,
       {
         ...this.schema,
-        [key]: { query: [new ScalarQueryType(fieldDesc.type)], paramInputs: {} },
+        [key]: { query: [new ScalarQueryType(fieldDesc.type[0])], paramInputs: {} },
       },
       this.fragments,
       this.variables,
