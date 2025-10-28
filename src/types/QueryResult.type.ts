@@ -8,6 +8,17 @@ import { AnyType } from './AnyType.type'
 import { ObjectUnionToObjectIntersection } from './ObjectUnionToObjectIntersection.type'
 import { Value } from './Value.type'
 
+// Helper type to add null for optional fields without deep conditional checking
+type AddNullIfOptional<
+  K extends PropertyKey,
+  ResolverSchema extends Record<string, { optional: boolean }>,
+  ResultType
+> = K extends keyof ResolverSchema
+  ? ResolverSchema[K]['optional'] extends true
+    ? ResultType | null
+    : ResultType
+  : ResultType
+
 export type QueryResult<Q extends AnyQueryType> = Q extends [infer T extends AnyObjectQueryType]
   ? Array<QueryResult<T>>
   : Q extends [infer T extends AnyUnionQueryType]
@@ -27,13 +38,11 @@ export type QueryResult<Q extends AnyQueryType> = Q extends [infer T extends Any
       any
     >
   ? {
-      [K in keyof QueryFieldSchema]:
-        | QueryResult<QueryFieldSchema[K]['query']>
-        | (K extends keyof ResolverType['schema']
-            ? ResolverType['schema'][K]['optional'] extends true
-              ? null
-              : never
-            : never)
+      [K in keyof QueryFieldSchema]: AddNullIfOptional<
+        K,
+        ResolverType['schema'],
+        QueryResult<QueryFieldSchema[K]['query']>
+      >
     } & FragmentArrayResult<QueryFragments>
   : Q extends [infer T extends ScalarQueryType<AnyType>]
   ? Array<QueryResult<T>>
