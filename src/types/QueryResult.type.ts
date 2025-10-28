@@ -24,7 +24,7 @@ type AddNullIfOptional<K extends PropertyKey, OptionalKeys, ResultType> = K exte
 
 // Internal depth-limited QueryResult implementation
 type QueryResultImpl<Q extends AnyQueryType, Depth extends number> = [Depth] extends [never]
-  ? any // Depth limit reached, fall back to any
+  ? unknown // Depth limit reached, fall back to unknown
   : Q extends [infer T extends AnyObjectQueryType]
   ? Array<QueryResultImpl<T, Prev[Depth]>>
   : Q extends [infer T extends AnyUnionQueryType]
