@@ -8,8 +8,9 @@ import { AnyType } from './AnyType.type'
 import { ObjectUnionToObjectIntersection } from './ObjectUnionToObjectIntersection.type'
 import { Value } from './Value.type'
 
-// Depth counter for tail-recursion optimization
-// We use a tuple length to track depth, limiting recursion to prevent excessive type instantiation
+// Depth counter to limit recursion depth
+// Maps each depth level to the previous level (20→19, 19→18, ..., 1→0, 0→never)
+// This prevents excessive type instantiation and TypeScript compiler errors
 type Prev = [never, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, ...0[]]
 
 // Pre-compute optional field keys from the resolver schema to avoid repeated conditional checks
