@@ -17,7 +17,6 @@ import {
   UnionListResolvers,
   UnionResolvers,
 } from '../types/object-field-resolvers.type'
-import { Prettify } from '../types/Prettify.type'
 import { AnyObjectFragmentQueryType, ObjectFragmentQueryTypeOf } from './ObjectFragmentQueryType'
 import { ScalarQueryType } from './ScalarQueryType'
 import { UnionQueryType } from './UnionQueryType'
@@ -181,7 +180,7 @@ export class ObjectQueryType<
   ): ObjectQueryTypeOf<
     ResolverType,
     Variables,
-    Prettify<QueryFieldSchema & { [key in K]: { query: [ListSubquery]; paramInputs: Record<never, any> } }>,
+    QueryFieldSchema & { [key in K]: { query: [ListSubquery]; paramInputs: Record<never, any> } },
     QueryFragments
   >
 
@@ -196,7 +195,7 @@ export class ObjectQueryType<
   ): ObjectQueryTypeOf<
     ResolverType,
     Variables,
-    Prettify<QueryFieldSchema & { [key in K]: { query: ObjectSubquery; paramInputs: Record<never, any> } }>,
+    QueryFieldSchema & { [key in K]: { query: ObjectSubquery; paramInputs: Record<never, any> } },
     QueryFragments
   >
 
@@ -210,14 +209,12 @@ export class ObjectQueryType<
   ): ObjectQueryTypeOf<
     ResolverType,
     Variables,
-    Prettify<
-      QueryFieldSchema & {
-        [key in K]: {
-          query: [UnionQueryType<Union, UnionSubqueries<Union, SubqueryFactories>>]
-          paramInputs: Record<never, any>
-        }
+    QueryFieldSchema & {
+      [key in K]: {
+        query: [UnionQueryType<Union, UnionSubqueries<Union, SubqueryFactories>>]
+        paramInputs: Record<never, any>
       }
-    >,
+    },
     QueryFragments
   >
 
@@ -231,14 +228,12 @@ export class ObjectQueryType<
   ): ObjectQueryTypeOf<
     ResolverType,
     Variables,
-    Prettify<
-      QueryFieldSchema & {
-        [key in K]: {
-          query: UnionQueryType<Union, UnionSubqueries<Union, SubqueryFactories>>
-          paramInputs: Record<never, any>
-        }
+    QueryFieldSchema & {
+      [key in K]: {
+        query: UnionQueryType<Union, UnionSubqueries<Union, SubqueryFactories>>
+        paramInputs: Record<never, any>
       }
-    >,
+    },
     QueryFragments
   >
 
@@ -248,11 +243,9 @@ export class ObjectQueryType<
   ): ObjectQueryTypeOf<
     ResolverType,
     Variables,
-    Prettify<
-      QueryFieldSchema & {
-        [key in K]: { query: [ScalarQueryType<ListFields[K]['type'][0]>]; paramInputs: Record<never, any> }
-      }
-    >,
+    QueryFieldSchema & {
+      [key in K]: { query: [ScalarQueryType<ListFields[K]['type'][0]>]; paramInputs: Record<never, any> }
+    },
     QueryFragments
   >
 
@@ -262,9 +255,7 @@ export class ObjectQueryType<
   ): ObjectQueryTypeOf<
     ResolverType,
     Variables,
-    Prettify<
-      QueryFieldSchema & { [key in K]: { query: ScalarQueryType<Fields[K]['type']>; paramInputs: Record<never, any> } }
-    >,
+    QueryFieldSchema & { [key in K]: { query: ScalarQueryType<Fields[K]['type']>; paramInputs: Record<never, any> } },
     QueryFragments
   >
 
@@ -297,11 +288,9 @@ export class ObjectQueryType<
     const nextQueryType: ObjectQueryTypeOf<
       ResolverType,
       Variables,
-      Prettify<
-        QueryFieldSchema & {
-          [key in K]: { query: ScalarQueryType<Fields[K]['type']>; paramInputs: Record<never, any> }
-        }
-      >,
+      QueryFieldSchema & {
+        [key in K]: { query: ScalarQueryType<Fields[K]['type']>; paramInputs: Record<never, any> }
+      },
       QueryFragments
     > = new ObjectQueryType(
       this.opType,
@@ -328,11 +317,9 @@ export class ObjectQueryType<
     const nextQueryType: ObjectQueryTypeOf<
       ResolverType,
       Variables,
-      Prettify<
-        QueryFieldSchema & {
-          [key in K]: { query: ScalarQueryType<Fields[K]['type']>; paramInputs: Params }
-        }
-      >,
+      QueryFieldSchema & {
+        [key in K]: { query: ScalarQueryType<Fields[K]['type']>; paramInputs: Params }
+      },
       QueryFragments
     > = new ObjectQueryType(
       this.opType,
@@ -356,11 +343,9 @@ export class ObjectQueryType<
     const nextQueryType: ObjectQueryTypeOf<
       ResolverType,
       Variables,
-      Prettify<
-        QueryFieldSchema & {
-          [key in K]: { query: [ScalarQueryType<ListFields[K]['type']>]; paramInputs: Record<never, any> }
-        }
-      >,
+      QueryFieldSchema & {
+        [key in K]: { query: [ScalarQueryType<ListFields[K]['type']>]; paramInputs: Record<never, any> }
+      },
       QueryFragments
     > = new ObjectQueryType(
       this.opType,
@@ -392,11 +377,9 @@ export class ObjectQueryType<
     const nextQueryType: ObjectQueryTypeOf<
       ResolverType,
       Variables,
-      Prettify<
-        QueryFieldSchema & {
-          [key in K]: { query: Subquery; paramInputs: Record<never, any> }
-        }
-      >,
+      QueryFieldSchema & {
+        [key in K]: { query: Subquery; paramInputs: Record<never, any> }
+      },
       QueryFragments
     > = new ObjectQueryType(
       this.opType,
@@ -431,11 +414,9 @@ export class ObjectQueryType<
     const nextQueryType: ObjectQueryTypeOf<
       ResolverType,
       Variables,
-      Prettify<
-        QueryFieldSchema & {
-          [key in K]: { query: [Subquery]; paramInputs: Record<never, any> }
-        }
-      >,
+      QueryFieldSchema & {
+        [key in K]: { query: [Subquery]; paramInputs: Record<never, any> }
+      },
       QueryFragments
     > = new ObjectQueryType(
       this.opType,
@@ -472,11 +453,9 @@ export class ObjectQueryType<
     const nextQueryType: ObjectQueryTypeOf<
       ResolverType,
       Variables,
-      Prettify<
-        QueryFieldSchema & {
-          [key in K]: { query: Subquery; paramInputs: Params }
-        }
-      >,
+      QueryFieldSchema & {
+        [key in K]: { query: Subquery; paramInputs: Params }
+      },
       QueryFragments
     > = new ObjectQueryType(
       this.opType,
@@ -496,7 +475,7 @@ export class ObjectQueryType<
   listParamField<
     K extends Extract<keyof ObjectListFields, string>,
     Params extends VariableFieldParams<ObjectListFields[K], Variables>,
-    SubquerySchema extends Record<string, { query: AnyQueryType; paramInputs: Record<never, any> }>,
+    SubquerySchema extends Record<string, { query: AnyQueryType; paramInputs: Record<string, AnyParamInputType> }>,
     SubqueryFragments extends [...ObjectFragmentQueryTypeOf<ObjectListFields[K]['type'][0]>[]],
     Subquery extends ObjectQueryTypeOf<ObjectListFields[K]['type'][0], Variables, SubquerySchema, SubqueryFragments>
   >(
@@ -513,11 +492,9 @@ export class ObjectQueryType<
     const nextQueryType: ObjectQueryTypeOf<
       ResolverType,
       Variables,
-      Prettify<
-        QueryFieldSchema & {
-          [key in K]: { query: [Subquery]; paramInputs: Params }
-        }
-      >,
+      QueryFieldSchema & {
+        [key in K]: { query: [Subquery]; paramInputs: Params }
+      },
       QueryFragments
     > = new ObjectQueryType(
       this.opType,
@@ -560,14 +537,12 @@ export class ObjectQueryType<
     const nextQueryType: ObjectQueryTypeOf<
       ResolverType,
       Variables,
-      Prettify<
-        QueryFieldSchema & {
-          [key in K]: {
-            query: UnionQueryType<Union, UnionSubqueries<Union, SubqueryFactories>>
-            paramInputs: Record<never, any>
-          }
+      QueryFieldSchema & {
+        [key in K]: {
+          query: UnionQueryType<Union, UnionSubqueries<Union, SubqueryFactories>>
+          paramInputs: Record<never, any>
         }
-      >,
+      },
       QueryFragments
     > = new ObjectQueryType(
       this.opType,
@@ -610,14 +585,13 @@ export class ObjectQueryType<
     const nextQueryType: ObjectQueryTypeOf<
       ResolverType,
       Variables,
-      Prettify<
-        QueryFieldSchema & {
-          [key in K]: {
-            query: [UnionQueryType<Union, UnionSubqueries<Union, SubqueryFactories>>]
-            paramInputs: Record<never, any>
-          }
+      QueryFieldSchema & {
+        [key in K]: {
+          query: [UnionQueryType<Union, UnionSubqueries<Union, SubqueryFactories>>]
+          paramInputs: Record<never, any>
         }
-      >
+      },
+      QueryFragments
     > = new ObjectQueryType(
       this.opType,
       this.resolverType,
